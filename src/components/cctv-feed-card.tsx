@@ -1,4 +1,4 @@
-import { RefreshCw, Wifi } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -14,20 +14,20 @@ type Props = {
     onTestConnection?: () => void
 }
 
-const statusConfig: Record<CCTVStatus, { label: string; color: string; message: string }> = {
+const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: string }> = {
     connecting: {
         label: "CONNECTING",
-        color: "text-blue-500",
+        pill: "bg-blue-500/15 text-blue-600 border border-blue-400/40",
         message: "Connection closed. Reconnecting...",
     },
     live: {
         label: "LIVE",
-        color: "text-green-500",
+        pill: "bg-green-500/15 text-green-600 border border-green-400/40",
         message: "",
     },
     disconnected: {
         label: "DISCONNECTED",
-        color: "text-destructive",
+        pill: "bg-destructive/15 text-destructive border border-destructive/40",
         message: "Camera disconnected. Check your source.",
     },
 }
@@ -55,9 +55,13 @@ export function CCTVFeedCard({
             <CardHeader>
                 <CardTitle>Live CCTV monitoring</CardTitle>
                 <CardDescription>Direct camera feed from your CCTV source.</CardDescription>
-                <div className={cn("col-start-2 row-span-2 row-start-1 self-start justify-self-end text-xs font-bold tracking-widest", cfg.color)}>
+                <span className={cn(
+                    "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+                    "rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase",
+                    cfg.pill
+                )}>
                     {cfg.label}
-                </div>
+                </span>
             </CardHeader>
 
             <CardContent>
