@@ -5,13 +5,16 @@ import { cn } from "@/lib/utils"
 import { useRef } from "react"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
+export type CCTVSize = "default" | "sm" | "compact"
 
 type Props = {
     status?: CCTVStatus
     streamUrl?: string
     detections?: number
     parkingSlots?: number
-    size?: "default" | "compact"
+    size?: CCTVSize
+    title?: string
+    description?: string
     onRefresh?: () => void
     onTestConnection?: () => void
     onUpload?: (file: File) => void
@@ -41,6 +44,8 @@ export function CCTVFeedCard({
     detections = 0,
     parkingSlots = 0,
     size = "default",
+    title,
+    description,
     onRefresh,
     onTestConnection,
     onUpload,
@@ -48,7 +53,6 @@ export function CCTVFeedCard({
     const cfg = statusConfig[status]
     const isLive = status === "live" && !!streamUrl
     const fileRef = useRef<HTMLInputElement>(null)
-    const isCompact = size === "compact"
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -56,43 +60,20 @@ export function CCTVFeedCard({
         e.target.value = ""
     }
 
-    return (
-        <Card className={cn("w-full ring-secondary hover:ring-secondary", isCompact && "ring-1")}>
-
-            {/* Header — hidden in compact */}
-            {!isCompact && (
-                <CardHeader>
-                    <CardTitle>Live CCTV monitoring</CardTitle>
-                    <CardDescription>Direct camera feed from your CCTV source.</CardDescription>
-                    <span className={cn(
-                        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-                        "rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase",
-                        cfg.pill
-                    )}>
-                        {cfg.label}
-                    </span>
-                </CardHeader>
-            )}
-
-            <CardContent className={cn(isCompact && "p-1.5")}>
-                {/* Status pill overlay for compact mode */}
-                <div className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
-                    style={{ aspectRatio: "16/9", maxHeight: isCompact ? "180px" : undefined }}
-                >
-                    {isLive ? (
-                        <img
-                            src={streamUrl}
-                            alt="CCTV live feed"
-                            className="h-full w-full object-cover"
-                        />
-                    ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                            <p className="text-sm text-white/40">{cfg.message}</p>
-                        </div>
-                    )}
-
-                    {/* Compact: pill overlaid on feed */}
-                    {isCompact && (
+    // ── compact: feed only + pill overlay, zero chrome ──────────────
+    if (size === "compact") {
+        return (
+            <Card className="w-full ring-secondary hover:ring-secondary ring-1">
+                <CardContent className="p-1.5">
+                    <div className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
+                        style={{ aspectRatio: "16/9", maxHeight: "180px" }}
+                    >
+                        {isLive
+                            ? <img src={streamUrl} alt="CCTV feed" className="h-full w-full object-cover" />
+                            : <div className="flex h-full w-full items-center justify-center">
+                                <p className="text-sm text-white/40">{cfg.message}</p>
+                              </div>
+                        }
                         <span className={cn(
                             "absolute top-2 right-2 rounded-full px-2 py-0.5",
                             "text-[9px] font-bold tracking-widest uppercase",
@@ -100,51 +81,106 @@ export function CCTVFeedCard({
                         )}>
                             {cfg.label}
                         </span>
-                    )}
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    // ── sm: title + pill + feed + upload button only ─────────────────
+    if (size === "sm") {
+        return (
+            <Card className="w-full ring-secondary hover:ring-secondary ring-1">
+                <CardHeader>
+                    <CardTitle className="text-sm">{title ?? "Demo Inference"}</CardTitle>
+                    {description && <CardDescription className="text-xs">{description}</CardDescription>}
+                    <span className={cn(
+                        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+                        "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase",
+                        cfg.pill
+                    )}>
+                        {cfg.label}
+                    </span>
+                </CardHeader>
+                <CardContent>
+                    <div className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
+                        style={{ aspectRatio: "16/9" }}
+                    >
+                        {isLive
+                            ? <img src={streamUrl} alt="Demo feed" className="h-full w-full object-cover" />
+                            : <div className="flex h-full w-full items-center justify-center">
+                                <p className="text-xs text-white/40">{cfg.message}</p>
+                              </div>
+                        }
+                    </div>
+                </CardContent>
+                {onUpload && (
+                    <CardFooter className="justify-end">
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept="video/mp4"
+                            className="hidden"
+                            onChange={handleFile}
+                        />
+                        <Button size="sm" onClick={() => fileRef.current?.click()}>
+                            <Upload className="size-3.5" />
+                            Upload MP4
+                        </Button>
+                    </CardFooter>
+                )}
+            </Card>
+        )
+    }
+
+    // ── default: full card ────────────────────────────────────────────
+    return (
+        <Card className="w-full ring-secondary hover:ring-secondary ring-1">
+            <CardHeader>
+                <CardTitle>{title ?? "Live CCTV monitoring"}</CardTitle>
+                <CardDescription>{description ?? "Direct camera feed from your CCTV source."}</CardDescription>
+                <span className={cn(
+                    "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+                    "rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase",
+                    cfg.pill
+                )}>
+                    {cfg.label}
+                </span>
+            </CardHeader>
+            <CardContent>
+                <div className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
+                    style={{ aspectRatio: "16/9" }}
+                >
+                    {isLive
+                        ? <img src={streamUrl} alt="CCTV live feed" className="h-full w-full object-cover" />
+                        : <div className="flex h-full w-full items-center justify-center">
+                            <p className="text-sm text-white/40">{cfg.message}</p>
+                          </div>
+                    }
                 </div>
             </CardContent>
-
-            {/* Footer — hidden in compact */}
-            {!isCompact && (
-                <CardFooter className="flex items-center justify-between gap-4">
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>
-                            <span className="text-destructive font-medium">{detections}</span> detections
-                        </span>
-                        <span>
-                            <span className="text-destructive font-medium">{parkingSlots}</span> parking slots
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {onUpload && (
-                            <>
-                                <input
-                                    ref={fileRef}
-                                    type="file"
-                                    accept="video/mp4"
-                                    className="hidden"
-                                    onChange={handleFile}
-                                />
-                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                                    <Upload className="size-3.5" />
-                                    Upload MP4
-                                </Button>
-                            </>
-                        )}
+            <CardFooter className="flex items-center justify-between gap-4">
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span><span className="text-destructive font-medium">{detections}</span> detections</span>
+                    <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    {onRefresh && (
                         <Button size="sm" onClick={onRefresh}>
                             <RefreshCw className="size-3.5" />
                             Refresh live feed
                         </Button>
+                    )}
+                    {onTestConnection && (
                         <button
                             onClick={onTestConnection}
                             className="text-xs text-muted-foreground underline-offset-4 hover:underline cursor-pointer"
                         >
                             Test camera connection
                         </button>
-                    </div>
-                </CardFooter>
-            )}
+                    )}
+                </div>
+            </CardFooter>
         </Card>
     )
 }
