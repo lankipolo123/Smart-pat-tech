@@ -47,9 +47,7 @@ export function CCTVFeedCard({
         <Card
             className={cn(
                 "w-full ring-2",
-                status === "live"
-                    ? "ring-green-500/60 hover:ring-green-500/60"
-                    : "ring-destructive/60 hover:ring-destructive/60"
+                "ring-secondary hover:ring-secondary"
             )}
         >
             <CardHeader>
