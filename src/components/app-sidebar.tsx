@@ -26,10 +26,10 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
 
   return (
     <>
-      <div className="w-64 border-r h-screen flex flex-col">
+      <div className="w-64 border-r border-secondary/40 h-screen flex flex-col">
 
         {/* HEADER (LOCKED 81PX) */}
-        <div className="h-[87px] px-6 border-b flex items-center overflow-hidden">
+        <div className="h-[87px] px-6 border-b border-secondary/40 flex items-center overflow-hidden">
 
           <div className="flex items-center gap-3">
 
@@ -83,7 +83,7 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
         </div>
 
         {/* LOGOUT */}
-        <div className="border-t p-2">
+        <div className="border-t border-secondary/40 p-2">
           <button
             onClick={() => setOpen(true)}
             className="w-full flex items-center gap-2 px-3 py-3 text-red-500 hover:text-red-600 rounded-lg"

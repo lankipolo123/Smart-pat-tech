@@ -52,7 +52,7 @@ export function PageHeader({ title, description, user }: Props) {
     }, [])
 
     return (
-        <div className="sticky top-0 z-10 w-full h-[87px] px-8 border-b bg-background flex items-center justify-between overflow-hidden">
+        <div className="sticky top-0 z-10 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between overflow-hidden">
 
             {/* TITLE + DESCRIPTION */}
             <div className="flex flex-col gap-0.5">
