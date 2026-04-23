@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 type Props = {
     title: string
+    description?: string
     user?: {
         name: string
         role: string
@@ -13,7 +14,7 @@ type Props = {
     }
 }
 
-export function PageHeader({ title, user }: Props) {
+export function PageHeader({ title, description, user }: Props) {
     const [time, setTime] = useState("")
     const [date, setDate] = useState("")
 
@@ -51,12 +52,17 @@ export function PageHeader({ title, user }: Props) {
     }, [])
 
     return (
-        <div className="w-full h-[87px] px-8 border-b flex items-center justify-between overflow-hidden">
+        <div className="w-full min-h-[87px] px-8 py-4 border-b flex items-center justify-between overflow-hidden">
 
-            {/* TITLE (PRIMARY - KEEP) */}
-            <h1 className="text-3xl font-medium tracking-wide text-primary uppercase">
-                {title}
-            </h1>
+            {/* TITLE + DESCRIPTION */}
+            <div className="flex flex-col gap-0.5">
+                <h1 className="text-3xl font-medium tracking-wide text-primary uppercase">
+                    {title}
+                </h1>
+                {description && (
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                )}
+            </div>
 
             {/* RIGHT SIDE */}
             {cfg.showUserInfo && (
