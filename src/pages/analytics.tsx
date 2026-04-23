@@ -2,8 +2,7 @@ import { PageContent } from "@/components/page-content"
 import { PageHeader } from "@/components/page-header"
 import { AnalyticsLayout } from "@/layouts/analytics-layout"
 import { AnalyticsStats } from "@/components/analytics-stats"
-import { AnalyticsRevenueChart } from "@/components/analytics-revenue-chart"
-import { AnalyticsVehicleChart } from "@/components/analytics-vehicle-chart"
+import { AnalyticsCharts } from "@/components/analytics-charts"
 
 export function AnalyticsPage() {
     return (
@@ -14,8 +13,7 @@ export function AnalyticsPage() {
             />
             <AnalyticsLayout
                 stats={<AnalyticsStats />}
-                revenueChart={<AnalyticsRevenueChart />}
-                vehicleChart={<AnalyticsVehicleChart />}
+                charts={<AnalyticsCharts />}
             />
         </PageContent>
     )

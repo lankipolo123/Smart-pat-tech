@@ -8,12 +8,6 @@ export type VehiclePoint = {
     vehicles: number
 }
 
-export type VehicleTypeBreakdown = {
-    type: string
-    count: number
-    revenue: number
-}
-
 export type AnalyticsStats = {
     totalRevenue: number
     totalVehicles: number
@@ -44,12 +38,4 @@ export const vehicleData: VehiclePoint[] = [
     { date: "Feb", vehicles: 310 },
     { date: "Mar", vehicles: 340 },
     { date: "Apr", vehicles: 340 },
-]
-
-export const vehicleTypeBreakdown: VehicleTypeBreakdown[] = [
-    { type: "Sedan",   count: 520, revenue: 26000 },
-    { type: "SUV",     count: 310, revenue: 15500 },
-    { type: "Pickup",  count: 240, revenue: 12000 },
-    { type: "Van",     count: 140, revenue: 7000  },
-    { type: "Motorcycle", count: 70, revenue: 3500 },
 ]
