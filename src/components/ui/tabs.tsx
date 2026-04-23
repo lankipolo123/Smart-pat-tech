@@ -22,7 +22,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list flex w-full items-center justify-center rounded-lg p-[3px]",
+  "group/tabs-list flex w-full items-center justify-center overflow-hidden rounded-lg",
   {
     variants: {
       variant: {
@@ -56,9 +56,9 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative flex-1 min-w-[100px] items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
+        "relative flex-1 min-w-[100px] items-center justify-center px-3 py-2 text-sm font-medium transition-all",
         "bg-primary text-primary-foreground hover:bg-primary/90",
-        "data-active:bg-background data-active:text-foreground data-active:shadow-sm",
+        "data-active:bg-background data-active:text-foreground",
         className
       )}
       {...props}
