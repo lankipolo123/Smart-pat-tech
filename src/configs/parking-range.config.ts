@@ -1,7 +1,7 @@
 export const parkingRanges = [
     { key: "today", label: "Today" },
-    { key: "week", label: "7 Days" },
-    { key: "month", label: "30 Days" },
+    { key: "week", label: "Last 7 Days" },
+    { key: "month", label: "Last 30 Days" },
     { key: "all", label: "All Time" },
 ] as const
 

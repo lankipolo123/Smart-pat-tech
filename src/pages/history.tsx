@@ -1,4 +1,3 @@
-
 import { useState } from "react"
 
 import { PageContent } from "@/components/page-content"
@@ -8,19 +7,21 @@ import { HistoryLayout } from "@/layouts/history-layout"
 import { RangeTabs } from "@/components/range-tabs"
 import { HistoryStats } from "@/components/history-stats"
 import { HistoryChart } from "@/components/history-chart"
+import { HistoryTable } from "@/components/history-table"
 
 import { type ParkingRange } from "@/configs/parking-range.config"
 
 export function HistoryPage() {
-    const [range, setRange] = useState<ParkingRange>("week")
+    const [range, setRange] = useState<ParkingRange>("today")
 
     return (
         <PageContent>
-            <PageHeader title="History" description="History Logs" />
+            <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
             <HistoryLayout
                 tabs={<RangeTabs range={range} onRangeChange={setRange} />}
-                stats={<HistoryStats />}
+                stats={<HistoryStats range={range} />}
                 chart={<HistoryChart range={range} />}
+                table={<HistoryTable range={range} />}
             />
         </PageContent>
     )
