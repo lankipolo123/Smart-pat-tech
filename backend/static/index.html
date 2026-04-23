@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ParkVision</title>
+</head>
+<body>
+  <h2>ParkVision Dashboard</h2>
+
+  <button onclick="show('cam')">Camera</button>
+  <button onclick="show('mp4')">Upload MP4</button>
+
+  <hr>
+
+  <img id="stream" src="http://localhost:8000/video" width="800">
+
+  <div id="mp4" style="display:none;">
+    <input type="file" id="file">
+    <p>Upload MP4 for detection</p>
+  </div>
+
+  <script>
+    function show(tab) {
+      document.getElementById("mp4").style.display = tab === "mp4" ? "block" : "none";
+      if (tab === "cam") {
+        document.getElementById("stream").src = "http://localhost:8000/video?" + Date.now();
+      }
+    }
+
+    document.getElementById("file").onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const form = new FormData();
+      form.append("file", file, file.name);
+
+      const res = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: form
+      });
+
+      const data = await res.json();
+      console.log(data);
+      alert("Video uploaded + detection running");
+
+      document.getElementById("stream").src = "http://localhost:8000/video?t=" + Date.now();
+    };
+  </script>
+</body>
+</html>
