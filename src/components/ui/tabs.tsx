@@ -22,7 +22,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list flex w-full items-center justify-center rounded-lg p-[3px] text-muted-foreground",
+  "group/tabs-list flex w-full items-center justify-center rounded-lg p-[3px]",
   {
     variants: {
       variant: {
