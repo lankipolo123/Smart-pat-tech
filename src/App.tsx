@@ -1,25 +1,54 @@
 import { useState } from "react"
 
 import LoginPage from "@/pages/login"
-import DashboardPage from "@/pages/dashboard"
+import { DashboardPage } from "@/pages/dashboard"
+import { HistoryPage } from "@/pages/history"
+import { AnalyticsPage } from "@/pages/analytics"
+import { CCTVPage } from "@/pages/cctv"
+import { SettingsPage } from "@/pages/settings"
+
+import { AppSidebar } from "@/components/app-sidebar"
 
 function App() {
-  const [page, setPage] = useState<"login" | "dashboard">("login")
+  const [loggedIn, setLoggedIn] = useState(false)
   const [active, setActive] = useState("dashboard")
 
-  const goLogin = () => setPage("login")
-  const goDashboard = () => setPage("dashboard")
+  if (!loggedIn) {
+    return <LoginPage onLogin={() => setLoggedIn(true)} />
+  }
 
-  if (page === "login") {
-    return <LoginPage onLogin={goDashboard} />
+  const renderPage = () => {
+    switch (active) {
+      case "dashboard":
+        return <DashboardPage />
+      case "history":
+        return <HistoryPage />
+      case "analytics":
+        return <AnalyticsPage />
+      case "cctv":
+        return <CCTVPage />
+      case "settings":
+        return <SettingsPage />
+      default:
+        return <DashboardPage />
+    }
   }
 
   return (
-    <DashboardPage
-      active={active}
-      onNavigate={setActive}
-      onLogout={goLogin}
-    />
+    <div className="flex h-screen w-full overflow-hidden">
+
+      <AppSidebar
+        active={active}
+        onNavigate={setActive}
+        onLogout={() => setLoggedIn(false)}
+      />
+
+      {/* CRITICAL: NO padding here */}
+      <div className="flex-1 min-w-0">
+        {renderPage()}
+      </div>
+
+    </div>
   )
 }
 

@@ -1,21 +1,13 @@
 import { PageContent } from "@/components/page-content"
 import { PageHeader } from "@/components/page-header"
 
-export function DashboardPage() {
+export function CCTVPage() {
     return (
         <PageContent>
-
             <PageHeader
-                title="Dashboard"
+                title="CCTV"
                 description="Overview of system status"
             />
-
-            <div className="p-6 w-full">
-                <div className="bg-gray-100 p-4 rounded-md w-full">
-                    Dashboard content
-                </div>
-            </div>
-
         </PageContent>
     )
 }
