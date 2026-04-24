@@ -28,7 +28,7 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
     <>
       <div className="w-64 border-r border-secondary/40 h-screen flex flex-col">
 
-        {/* HEADER (LOCKED 81PX) */}
+        {/* HEADER */}
         <div className="h-[87px] px-6 border-b border-secondary/40 flex items-center overflow-hidden">
 
           <div className="flex items-center gap-3">
@@ -74,7 +74,6 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
                     ${isActive ? "text-primary" : "text-secondary"}
                   `}
                 />
-
                 {item.title}
               </button>
             )
@@ -100,26 +99,36 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
         <DialogContent>
 
           <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogTitle className="text-primary">
+              Confirm Logout
+            </DialogTitle>
+
             <DialogDescription>
               Are you sure you want to logout?
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="flex items-center justify-end gap-3">
 
+            {/* CANCEL (BLACK) */}
+            <button
+              onClick={() => setOpen(false)}
+              className="px-3 py-2 rounded-md bg-black text-white text-sm hover:bg-black/80 transition"
+            >
+              Cancel
+            </button>
+
+            {/* PRIMARY ACTION */}
             <Button
-              variant="destructive"
               onClick={() => {
                 setOpen(false)
                 onLogout()
               }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Logout
             </Button>
+
           </DialogFooter>
 
         </DialogContent>
