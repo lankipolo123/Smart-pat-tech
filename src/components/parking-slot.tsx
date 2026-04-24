@@ -4,6 +4,7 @@ import { type ParkingSlot } from "@/mocks/parking-slots.data"
 
 type Props = {
     slot: ParkingSlot
+    compact?: boolean
 }
 
 const statusStyles = {
@@ -27,8 +28,28 @@ const statusStyles = {
     },
 }
 
-export function ParkingSlotCard({ slot }: Props) {
+export function ParkingSlotCard({ slot, compact }: Props) {
     const styles = statusStyles[slot.status]
+
+    if (compact) {
+        return (
+            <div className={cn("rounded-lg border-2 px-2 py-1.5 flex flex-col gap-1 transition-colors", styles.border)}>
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold">{slot.slot}</span>
+                    <span className={cn("size-1.5 rounded-full", styles.dot)} />
+                </div>
+                <span className={cn("self-start rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide", styles.badge)}>
+                    {styles.label}
+                </span>
+                {slot.plate && (
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Car className="size-2.5" />
+                        <span>{slot.plate}</span>
+                    </div>
+                )}
+            </div>
+        )
+    }
 
     return (
         <div className={cn("rounded-xl border-2 p-3 flex flex-col gap-2 transition-colors", styles.border)}>

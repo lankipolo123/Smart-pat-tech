@@ -42,9 +42,9 @@ export function ParkingSlotsGrid({ compact }: Props) {
             </CardHeader>
 
             <CardContent>
-                <div className={compact ? "grid grid-cols-2 gap-2" : "grid grid-cols-5 gap-3"}>
+                <div className={compact ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-5 gap-3"}>
                     {slots.map(slot => (
-                        <ParkingSlotCard key={slot.id} slot={slot} />
+                        <ParkingSlotCard key={slot.id} slot={slot} compact={compact} />
                     ))}
                 </div>
             </CardContent>
