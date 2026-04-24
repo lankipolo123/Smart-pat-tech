@@ -40,14 +40,14 @@ export function ParkingStatsCards({ vertical }: Props) {
     }
 
     return (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-2">
             {stats.map(stat => (
-                <Card key={stat.label}>
-                    <CardContent className="py-3 flex flex-col gap-1">
-                        <span className="text-xs uppercase text-muted-foreground">
+                <Card key={stat.label} size="sm">
+                    <CardContent className="px-3 py-2 flex flex-col gap-0.5">
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
                             {stat.label}
                         </span>
-                        <span className={`text-2xl font-bold ${stat.color}`}>
+                        <span className={`text-lg font-bold ${stat.color}`}>
                             {stat.value}
                         </span>
                     </CardContent>

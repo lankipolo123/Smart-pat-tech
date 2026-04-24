@@ -40,7 +40,7 @@ export function CCTVPage() {
                     {/* Left: CCTV feed */}
                     <div className="flex-[3] min-w-0">
                         <CCTVFeedCard
-                            size="md"
+                            size="lg"
                             streamUrl={streamSrc}
                             detections={0}
                             parkingSlots={0}
