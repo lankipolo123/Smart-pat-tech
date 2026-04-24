@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+import threading
 import torch
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -11,7 +12,6 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 
 app = FastAPI()
 
-# ---------------- CORS (allow React dev server) ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000"],
@@ -19,7 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------- FRONTEND ----------------
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -27,117 +26,176 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def home():
     return {"open": "http://localhost:8000/static/index.html"}
 
-# ---------------- SPEED OPTIMIZATION ----------------
+# ── model ────────────────────────────────────────────────────────────────────
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
 model = YOLO("yolov8n.pt")
 model.to(device)
 model.fuse()
+if device == "cuda":
+    model.half()                          # FP16 only on GPU
 model.overrides["verbose"] = False
 
-tracker = DeepSort(max_age=30)
+INFER_SIZE   = 320    # small = fast on potato laptop
+JPEG_QUALITY = 65     # lower = smaller payload = smoother stream
+SKIP_FRAMES  = 2      # run YOLO every Nth frame; draw cached boxes in between
+TARGET_FPS   = 20     # stream cap
 
-UPLOAD_PATH = "uploads/video.mp4"
-cap = None
+# ── tracker ──────────────────────────────────────────────────────────────────
+def make_tracker():
+    return DeepSort(max_age=20, n_init=2, nn_budget=50, embedder_gpu=device == "cuda")
+
+tracker = make_tracker()
+
+# ── shared state (inference thread → stream thread) ──────────────────────────
+latest_frame: bytes | None = None
+frame_lock    = threading.Lock()
+cap_lock      = threading.Lock()
+cap: cv2.VideoCapture | None = None
+_running      = False
 
 
-def load_video(path):
-    global cap
-    if cap:
-        cap.release()
-    cap = cv2.VideoCapture(path)
+def open_source(source):
+    """Switch capture source to webcam (0) or a file path."""
+    global cap, tracker, _running
+
+    with cap_lock:
+        if cap:
+            cap.release()
+
+        new_cap = cv2.VideoCapture(source)
+        new_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)   # minimal latency
+
+        if source == 0:                             # webcam tweaks
+            new_cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+            new_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            new_cap.set(cv2.CAP_PROP_FPS,          30)
+
+        cap = new_cap
+        tracker = make_tracker()                   # fresh tracker on source switch
+
+    if not _running:
+        _running = True
+        t = threading.Thread(target=_inference_loop, daemon=True)
+        t.start()
 
 
-if os.path.exists("parking_space.mp4"):
-    load_video("parking_space.mp4")
+def _inference_loop():
+    """Background thread: read frames, run YOLO+DeepSORT, encode JPEG."""
+    global latest_frame
+
+    frame_idx  = 0
+    last_boxes: list = []    # cached (ltrb, track_id) from last YOLO run
+
+    while True:
+        with cap_lock:
+            if cap is None or not cap.isOpened():
+                time.sleep(0.05)
+                continue
+            ret, frame = cap.read()
+
+        if not ret:
+            with cap_lock:
+                if cap:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # loop video
+            time.sleep(0.01)
+            continue
+
+        # ── resize display frame to max 640 wide ──────────────────────────
+        h, w = frame.shape[:2]
+        if w > 640:
+            scale = 640 / w
+            frame = cv2.resize(frame, (640, int(h * scale)))
+
+        frame_idx += 1
+
+        # ── YOLO inference every SKIP_FRAMES ──────────────────────────────
+        if frame_idx % SKIP_FRAMES == 0:
+            ih, iw = frame.shape[:2]
+            small  = cv2.resize(frame, (INFER_SIZE, int(ih * INFER_SIZE / iw)))
+
+            results = model.predict(
+                small, imgsz=INFER_SIZE, conf=0.45,
+                device=device, verbose=False
+            )[0]
+
+            sx = iw / small.shape[1]
+            sy = ih / small.shape[0]
+            dets = []
+
+            for box in results.boxes:
+                cls = int(box.cls[0])
+                if cls not in [2, 3, 5, 7]:   # car, motorcycle, bus, truck
+                    continue
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                x1, y1, x2, y2 = int(x1*sx), int(y1*sy), int(x2*sx), int(y2*sy)
+                dets.append(([x1, y1, x2-x1, y2-y1], float(box.conf[0]), "vehicle"))
+
+            tracks   = tracker.update_tracks(dets, frame=frame)
+            last_boxes = [
+                (list(map(int, t.to_ltrb())), t.track_id)
+                for t in tracks if t.is_confirmed()
+            ]
+
+        # ── draw cached boxes (every frame) ───────────────────────────────
+        for (l, top, r, b), tid in last_boxes:
+            cv2.rectangle(frame, (l, top), (r, b), (0, 255, 0), 2)
+            cv2.putText(frame, f"#{tid}", (l, top - 6),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+        count = len(last_boxes)
+        cv2.putText(frame, f"Vehicles: {count}", (10, 28),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        _, buf = cv2.imencode(
+            ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
+        )
+
+        with frame_lock:
+            latest_frame = buf.tobytes()
+
+
+# ── start with webcam on launch ───────────────────────────────────────────────
+open_source(0)
+
+
+# ── endpoints ─────────────────────────────────────────────────────────────────
+@app.post("/webcam")
+def use_webcam():
+    """Switch back to webcam (call from frontend after demo upload)."""
+    open_source(0)
+    return {"status": "ok"}
 
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     os.makedirs("uploads", exist_ok=True)
-
-    with open(UPLOAD_PATH, "wb") as f:
+    path = "uploads/video.mp4"
+    with open(path, "wb") as f:
         f.write(await file.read())
-
-    load_video(UPLOAD_PATH)
-
+    open_source(path)
     return {"status": "ok"}
 
 
-def reset():
-    if cap:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-
-
-# ---------------- STREAM ----------------
-def generate():
-    global cap
-
+def _stream():
+    interval = 1 / TARGET_FPS
     while True:
-        if cap is None:
-            time.sleep(0.1)
+        with frame_lock:
+            frame = latest_frame
+
+        if frame is None:
+            time.sleep(0.05)
             continue
 
-        ret, frame = cap.read()
-
-        if not ret:
-            reset()
-            continue
-
-        start = time.time()
-
-        results = model.predict(
-            frame,
-            imgsz=480,
-            conf=0.4,
-            device=device,
-            verbose=False
-        )[0]
-
-        detections = []
-
-        for box in results.boxes:
-            cls = int(box.cls[0])
-
-            if cls in [2, 3, 5, 7]:  # car, motorcycle, bus, truck
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = float(box.conf[0])
-                detections.append(([x1, y1, x2 - x1, y2 - y1], conf, "vehicle"))
-
-        tracks = tracker.update_tracks(detections, frame=frame)
-
-        count = 0
-
-        for t in tracks:
-            if not t.is_confirmed():
-                continue
-
-            track_id = t.track_id
-            l, t_, r, b = t.to_ltrb()
-            l, t_, r, b = map(int, [l, t_, r, b])
-            count += 1
-
-            cv2.rectangle(frame, (l, t_), (r, b), (0, 255, 0), 2)
-            cv2.putText(frame, f"ID {track_id}", (l, t_ - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
-        fps = 1 / max(time.time() - start, 0.001)
-
-        cv2.putText(frame, f"Tracked Vehicles: {count}", (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-
-        cv2.putText(frame, f"FPS: {fps:.1f}", (20, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-
-        _, buffer = cv2.imencode(".jpg", frame)
-
-        yield (b"--frame\r\n"
-               b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n")
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+        )
+        time.sleep(interval)
 
 
 @app.get("/video")
 def video():
     return StreamingResponse(
-        generate(),
+        _stream(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )

@@ -7,6 +7,7 @@ import { ParkingStatsCards } from "@/components/parking-stat-card"
 
 const STREAM_URL = "http://localhost:8000/video"
 const UPLOAD_URL = "http://localhost:8000/upload"
+const WEBCAM_URL = "http://localhost:8000/webcam"
 
 export function CCTVPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
@@ -23,6 +24,11 @@ export function CCTVPage() {
         } catch {
             // backend not running
         }
+        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
+    }, [])
+
+    const handleWebcam = useCallback(async () => {
+        try { await fetch(WEBCAM_URL, { method: "POST" }) } catch {}
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
@@ -46,6 +52,7 @@ export function CCTVPage() {
                             parkingSlots={0}
                             onRefresh={handleRefresh}
                             onUpload={handleUpload}
+                            onWebcam={handleWebcam}
                         />
                     </div>
 

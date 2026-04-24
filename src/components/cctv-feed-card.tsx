@@ -1,4 +1,4 @@
-import { RefreshCw, Upload } from "lucide-react"
+import { RefreshCw, Upload, Camera } from "lucide-react"
 import {
     Card,
     CardHeader,
@@ -24,6 +24,7 @@ type Props = {
     onRefresh?: () => void
     onTestConnection?: () => void
     onUpload?: (file: File) => void
+    onWebcam?: () => void
 }
 
 const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: string }> = {
@@ -54,6 +55,7 @@ export function CCTVFeedCard({
     onRefresh,
     onTestConnection,
     onUpload,
+    onWebcam,
 }: Props) {
     // null = no response yet (connecting), true = loaded (live), false = error (disconnected)
     const [connected, setConnected] = useState<boolean | null>(null)
@@ -215,6 +217,12 @@ export function CCTVFeedCard({
                                 </Button>
                             </>
                         )}
+                        {onWebcam && (
+                            <Button size="sm" variant="outline" onClick={onWebcam}>
+                                <Camera className="size-3.5" />
+                                Use Webcam
+                            </Button>
+                        )}
                         {onRefresh && (
                             <Button size="sm" onClick={onRefresh}>
                                 <RefreshCw className="size-3.5" />
@@ -265,12 +273,29 @@ export function CCTVFeedCard({
                         <span className="text-destructive font-medium">{detections}</span> detections •{" "}
                         <span className="text-destructive font-medium">{parkingSlots}</span> slots
                     </div>
-                    {onRefresh && (
-                        <Button size="sm" onClick={onRefresh}>
-                            <RefreshCw className="size-3.5" />
-                            Refresh
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {onUpload && (
+                            <>
+                                <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
+                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                    <Upload className="size-3.5" />
+                                    Upload MP4
+                                </Button>
+                            </>
+                        )}
+                        {onWebcam && (
+                            <Button size="sm" variant="outline" onClick={onWebcam}>
+                                <Camera className="size-3.5" />
+                                Use Webcam
+                            </Button>
+                        )}
+                        {onRefresh && (
+                            <Button size="sm" onClick={onRefresh}>
+                                <RefreshCw className="size-3.5" />
+                                Refresh
+                            </Button>
+                        )}
+                    </div>
                 </CardFooter>
             </Card>
         )
@@ -322,6 +347,12 @@ export function CCTVFeedCard({
                                 Upload MP4
                             </Button>
                         </>
+                    )}
+                    {onWebcam && (
+                        <Button size="sm" variant="outline" onClick={onWebcam}>
+                            <Camera className="size-3.5" />
+                            Use Webcam
+                        </Button>
                     )}
                     {onRefresh && (
                         <Button size="sm" onClick={onRefresh}>

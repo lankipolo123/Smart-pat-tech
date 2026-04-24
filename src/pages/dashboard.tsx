@@ -9,6 +9,7 @@ import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
 
 const STREAM_URL = "http://localhost:8000/video"
 const UPLOAD_URL = "http://localhost:8000/upload"
+const WEBCAM_URL = "http://localhost:8000/webcam"
 
 export function DashboardPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
@@ -28,6 +29,11 @@ export function DashboardPage() {
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
+    const handleWebcam = useCallback(async () => {
+        try { await fetch(WEBCAM_URL, { method: "POST" }) } catch {}
+        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
+    }, [])
+
     return (
         <PageContent>
             <PageHeader
@@ -43,6 +49,7 @@ export function DashboardPage() {
                         parkingSlots={0}
                         onRefresh={handleRefresh}
                         onUpload={handleUpload}
+                        onWebcam={handleWebcam}
                     />
                 }
                 alerts={<ActiveAlerts />}
