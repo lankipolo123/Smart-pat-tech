@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/page-header"
 import { DashboardContentLayout } from "@/layouts/dashboard-content-layout"
 import { CCTVFeedCard } from "@/components/cctv-feed-card"
 import { ActiveAlerts } from "@/components/active-alerts"
-import { ParkingStatusLegend } from "@/components/parking-status-legend"
 import { ParkingSummary } from "@/components/parking-summary"
 import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
 
@@ -47,7 +46,6 @@ export function DashboardPage() {
                     />
                 }
                 alerts={<ActiveAlerts />}
-                legend={<ParkingStatusLegend />}
                 summary={<ParkingSummary />}
                 slots={<ParkingSlotsGrid compact />}
             />

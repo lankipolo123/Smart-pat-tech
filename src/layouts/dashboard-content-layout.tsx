@@ -3,12 +3,11 @@ import type { ReactNode } from "react"
 type Props = {
     feed: ReactNode
     alerts: ReactNode
-    legend: ReactNode
     summary: ReactNode
     slots: ReactNode
 }
 
-export function DashboardContentLayout({ feed, alerts, legend, summary, slots }: Props) {
+export function DashboardContentLayout({ feed, alerts, summary, slots }: Props) {
     return (
         <div className="flex gap-4 w-full px-6 pt-4 pb-6">
             {/* Left: CCTV feed + alerts */}
@@ -17,9 +16,8 @@ export function DashboardContentLayout({ feed, alerts, legend, summary, slots }:
                 <section aria-label="active-alerts">{alerts}</section>
             </div>
 
-            {/* Right: legend + summary + parking slots */}
+            {/* Right: summary + parking slots */}
             <div className="flex-[45] flex flex-col gap-4 min-w-0">
-                <section aria-label="status-legend">{legend}</section>
                 <section aria-label="parking-summary">{summary}</section>
                 <section aria-label="parking-slots">{slots}</section>
             </div>
