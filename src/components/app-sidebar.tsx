@@ -26,24 +26,24 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
 
   return (
     <>
-      <div className="w-56 border-r border-secondary/40 h-screen flex flex-col">
+      <div className="w-44 border-r border-secondary/40 h-screen flex flex-col">
 
         {/* HEADER */}
-        <div className="h-[87px] px-6 border-b border-secondary/40 flex items-center overflow-hidden">
+        <div className="h-[87px] px-4 border-b border-secondary/40 flex items-center overflow-hidden">
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
 
             <img
               src="https://i.imgur.com/xDSUCZY.png"
               alt="Logo"
-              className="h-14 w-14 object-contain shrink-0"
+              className="h-10 w-10 object-contain shrink-0"
             />
 
             <div className="flex flex-col leading-tight">
-              <span className="text-lg font-semibold">
+              <span className="text-sm font-semibold">
                 TechSentinel
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[10px] text-muted-foreground">
                 Smart Park
               </span>
             </div>
