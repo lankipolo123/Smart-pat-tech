@@ -37,8 +37,8 @@ export function CCTVPage() {
                 {/* Main 2-panel layout */}
                 <div className="flex gap-4 items-start">
 
-                    {/* Left: huge CCTV feed */}
-                    <div className="flex-[3] min-w-0">
+                    {/* Left: CCTV feed */}
+                    <div className="flex-[2] min-w-0">
                         <CCTVFeedCard
                             size="md"
                             streamUrl={streamSrc}
@@ -50,7 +50,7 @@ export function CCTVPage() {
                     </div>
 
                     {/* Right: stat cards above parking slots */}
-                    <div className="flex-[2] flex flex-col gap-4 min-w-0">
+                    <div className="flex-[3] flex flex-col gap-4 min-w-0">
                         <ParkingStatsCards />
                         <ParkingSlotsGrid />
                     </div>
