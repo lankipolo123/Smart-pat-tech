@@ -38,6 +38,7 @@ export function DashboardPage() {
             <DashboardContentLayout
                 feed={
                     <CCTVFeedCard
+                        size="md"
                         streamUrl={streamSrc}
                         detections={0}
                         parkingSlots={0}
