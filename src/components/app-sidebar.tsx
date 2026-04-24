@@ -26,7 +26,7 @@ export function AppSidebar({ active, onNavigate, onLogout }: Props) {
 
   return (
     <>
-      <div className="w-64 border-r border-secondary/40 h-screen flex flex-col">
+      <div className="w-56 border-r border-secondary/40 h-screen flex flex-col">
 
         {/* HEADER */}
         <div className="h-[87px] px-6 border-b border-secondary/40 flex items-center overflow-hidden">
