@@ -36,16 +36,16 @@ const DEFAULT_DATA: ParkingSummaryData = {
 export function ParkingSummary({ data = DEFAULT_DATA }: Props) {
     return (
         <div className="flex flex-col gap-2">
-            <p className="text-lg font-semibold">Summary</p>
-            <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold">Summary</p>
+            <div className="grid grid-cols-2 gap-2">
                 {SUMMARY_ITEMS.map(({ label, valueKey, icon: Icon, valueColor }) => (
                     <Card key={label} size="sm">
-                        <CardContent className="flex items-center justify-between px-3 py-1.5">
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                <Icon className="size-3" />
-                                <span className="uppercase tracking-wide font-medium">{label}</span>
+                        <CardContent className="flex flex-col gap-1 px-3 py-2">
+                            <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                                <Icon className="size-2.5" />
+                                <span className="uppercase tracking-wide font-medium leading-tight">{label}</span>
                             </div>
-                            <span className={`text-sm font-bold ${valueColor}`}>
+                            <span className={`text-base font-bold ${valueColor}`}>
                                 {data[valueKey]}
                             </span>
                         </CardContent>
