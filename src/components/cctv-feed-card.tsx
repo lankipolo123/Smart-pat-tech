@@ -176,7 +176,7 @@ export function CCTVFeedCard({
                 <CardContent className="py-2">
                     <div
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
-                        style={{ aspectRatio: "16/9" }}
+                        style={{ aspectRatio: "16/9", maxHeight: "240px" }}
                     >
                         {streamUrl && (
                             <img
