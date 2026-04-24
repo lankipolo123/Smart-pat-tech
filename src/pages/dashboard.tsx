@@ -7,10 +7,11 @@ import { ActiveAlerts } from "@/components/active-alerts"
 import { ParkingSummary } from "@/components/parking-summary"
 import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
 
-const STREAM_URL  = "http://localhost:8000/video"
-const UPLOAD_URL  = "http://localhost:8000/upload"
-const WEBCAM_URL  = "http://localhost:8000/webcam"
-const CONNECT_URL = "http://localhost:8000/connect"
+const STREAM_URL   = "http://localhost:8000/video"
+const UPLOAD_URL   = "http://localhost:8000/upload"
+const WEBCAM_URL   = "http://localhost:8000/webcam"
+const CONNECT_URL  = "http://localhost:8000/connect"
+const CAMERAS_URL  = "http://localhost:8000/cameras"
 
 export function DashboardPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
@@ -30,8 +31,14 @@ export function DashboardPage() {
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
-    const handleWebcam = useCallback(async () => {
-        try { await fetch(WEBCAM_URL, { method: "POST" }) } catch {}
+    const handleWebcam = useCallback(async (index: number) => {
+        try {
+            await fetch(WEBCAM_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ index }),
+            })
+        } catch {}
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
@@ -63,6 +70,7 @@ export function DashboardPage() {
                         onUpload={handleUpload}
                         onWebcam={handleWebcam}
                         onConnect={handleConnect}
+                        camerasUrl={CAMERAS_URL}
                     />
                 }
                 alerts={<ActiveAlerts />}

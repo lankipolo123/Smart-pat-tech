@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useEffect } from "react"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
 export type CCTVSize = "compact" | "sm" | "md" | "default" | "lg"
@@ -24,8 +24,9 @@ type Props = {
     onRefresh?: () => void
     onTestConnection?: () => void
     onUpload?: (file: File) => void
-    onWebcam?: () => void
+    onWebcam?: (index: number) => void
     onConnect?: (url: string) => void
+    camerasUrl?: string
 }
 
 const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: string }> = {
@@ -58,11 +59,27 @@ export function CCTVFeedCard({
     onUpload,
     onWebcam,
     onConnect,
+    camerasUrl,
 }: Props) {
     // null = no response yet (connecting), true = loaded (live), false = error (disconnected)
     const [connected, setConnected] = useState<boolean | null>(null)
     const [cctvUrl, setCctvUrl] = useState("")
+    const [cameras, setCameras] = useState<{ index: number; name: string }[]>([])
+    const [selectedCam, setSelectedCam] = useState(0)
     const fileRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (!camerasUrl) return
+        fetch(camerasUrl)
+            .then(r => r.json())
+            .then((list: { index: number; name: string }[]) => {
+                if (list.length) {
+                    setCameras(list)
+                    setSelectedCam(list[list.length - 1].index) // default to last (usually external USB)
+                }
+            })
+            .catch(() => {})
+    }, [camerasUrl])
 
     const handleConnect = useCallback(() => {
         if (cctvUrl.trim()) {
@@ -409,10 +426,23 @@ export function CCTVFeedCard({
                             </>
                         )}
                         {onWebcam && (
-                            <Button size="sm" variant="outline" onClick={onWebcam}>
-                                <Camera className="size-3.5" />
-                                Use Webcam
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                                {cameras.length > 1 && (
+                                    <select
+                                        value={selectedCam}
+                                        onChange={e => setSelectedCam(Number(e.target.value))}
+                                        className="h-8 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                    >
+                                        {cameras.map(c => (
+                                            <option key={c.index} value={c.index}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => onWebcam(selectedCam)}>
+                                    <Camera className="size-3.5" />
+                                    Use Webcam
+                                </Button>
+                            </div>
                         )}
                         {onRefresh && (
                             <Button size="sm" onClick={onRefresh}>

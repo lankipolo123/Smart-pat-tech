@@ -170,6 +170,30 @@ class SourceRequest(BaseModel):
     url: str
 
 
+class WebcamRequest(BaseModel):
+    index: int = 0
+
+
+def _camera_name(index: int) -> str:
+    try:
+        with open(f"/sys/class/video4linux/video{index}/name") as f:
+            return f.read().strip()
+    except Exception:
+        return f"Camera {index}"
+
+
+@app.get("/cameras")
+def list_cameras():
+    """Return all camera indices that can be opened."""
+    cameras = []
+    for i in range(8):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            cameras.append({"index": i, "name": _camera_name(i)})
+            cap.release()
+    return cameras
+
+
 @app.post("/connect")
 def connect_source(body: SourceRequest):
     """Connect to any CCTV/IP camera URL (rtsp://, http://, etc.)."""
@@ -178,9 +202,9 @@ def connect_source(body: SourceRequest):
 
 
 @app.post("/webcam")
-def use_webcam():
-    """Switch back to webcam."""
-    open_source(0)
+def use_webcam(body: WebcamRequest = WebcamRequest()):
+    """Switch to webcam by index (default 0)."""
+    open_source(body.index)
     return {"status": "ok"}
 
 
