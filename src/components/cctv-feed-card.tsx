@@ -9,13 +9,12 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
 export type CCTVSize = "compact" | "sm" | "md" | "default" | "lg"
 
 type Props = {
-    status?: CCTVStatus
     streamUrl?: string
     detections?: number
     parkingSlots?: number
@@ -23,13 +22,11 @@ type Props = {
     title?: string
     description?: string
     onRefresh?: () => void
+    onTestConnection?: () => void
     onUpload?: (file: File) => void
 }
 
-const statusConfig: Record<
-    CCTVStatus,
-    { label: string; pill: string; message: string }
-> = {
+const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: string }> = {
     connecting: {
         label: "CONNECTING",
         pill: "bg-blue-500/15 text-blue-600 border border-blue-400/40",
@@ -48,7 +45,6 @@ const statusConfig: Record<
 }
 
 export function CCTVFeedCard({
-    status = "connecting",
     streamUrl,
     detections = 0,
     parkingSlots = 0,
@@ -56,11 +52,21 @@ export function CCTVFeedCard({
     title,
     description,
     onRefresh,
+    onTestConnection,
     onUpload,
 }: Props) {
-    const cfg = statusConfig[status]
-    const isLive = status === "live" && !!streamUrl
+    // null = no response yet (connecting), true = loaded (live), false = error (disconnected)
+    const [connected, setConnected] = useState<boolean | null>(null)
     const fileRef = useRef<HTMLInputElement>(null)
+
+    const derivedStatus: CCTVStatus = connected === true ? "live" : connected === false ? "disconnected" : "connecting"
+    const cfg = statusConfig[derivedStatus]
+    const isLive = connected === true && !!streamUrl
+
+    const imgProps = streamUrl ? {
+        onLoad: () => setConnected(true),
+        onError: () => setConnected(false),
+    } : {}
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -74,9 +80,7 @@ export function CCTVFeedCard({
         cfg.pill
     )
 
-    // ─────────────────────────────
-    // COMPACT
-    // ─────────────────────────────
+    // ── compact: feed only + pill overlay ───────────────────────────
     if (size === "compact") {
         return (
             <Card className="w-full ring-secondary hover:ring-secondary ring-1">
@@ -85,19 +89,19 @@ export function CCTVFeedCard({
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                         style={{ aspectRatio: "16/9" }}
                     >
-                        {isLive ? (
+                        {streamUrl && (
                             <img
                                 src={streamUrl}
-                                className="h-full w-full object-cover"
+                                alt="CCTV feed"
+                                className={cn("h-full w-full object-cover", !isLive && "hidden")}
+                                {...imgProps}
                             />
-                        ) : (
+                        )}
+                        {!isLive && (
                             <div className="flex h-full w-full items-center justify-center">
-                                <p className="text-sm text-white/40">
-                                    {cfg.message}
-                                </p>
+                                <p className="text-sm text-white/40">{cfg.message}</p>
                             </div>
                         )}
-
                         <span className={cn("absolute top-2 right-2", pillClass)}>
                             {cfg.label}
                         </span>
@@ -107,23 +111,13 @@ export function CCTVFeedCard({
         )
     }
 
-    // ─────────────────────────────
-    // SMALL
-    // ─────────────────────────────
+    // ── sm: title + pill + feed + upload ────────────────────────────
     if (size === "sm") {
         return (
             <Card className="w-[90%] mx-auto ring-secondary hover:ring-secondary ring-1">
                 <CardHeader className="flex flex-col gap-1 py-3">
-                    <CardTitle className="text-sm">
-                        {title ?? "Demo Inference"}
-                    </CardTitle>
-
-                    {description && (
-                        <CardDescription className="text-xs">
-                            {description}
-                        </CardDescription>
-                    )}
-
+                    <CardTitle className="text-sm">{title ?? "Demo Inference"}</CardTitle>
+                    {description && <CardDescription className="text-xs">{description}</CardDescription>}
                     <span className={pillClass}>{cfg.label}</span>
                 </CardHeader>
 
@@ -132,16 +126,17 @@ export function CCTVFeedCard({
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                         style={{ aspectRatio: "16/9" }}
                     >
-                        {isLive ? (
+                        {streamUrl && (
                             <img
                                 src={streamUrl}
-                                className="h-full w-full object-cover"
+                                alt="Demo feed"
+                                className={cn("h-full w-full object-cover", !isLive && "hidden")}
+                                {...imgProps}
                             />
-                        ) : (
+                        )}
+                        {!isLive && (
                             <div className="flex h-full w-full items-center justify-center">
-                                <p className="text-xs text-white/40">
-                                    {cfg.message}
-                                </p>
+                                <p className="text-xs text-white/40">{cfg.message}</p>
                             </div>
                         )}
                     </div>
@@ -156,10 +151,7 @@ export function CCTVFeedCard({
                             className="hidden"
                             onChange={handleFile}
                         />
-                        <Button
-                            size="sm"
-                            onClick={() => fileRef.current?.click()}
-                        >
+                        <Button size="sm" onClick={() => fileRef.current?.click()}>
                             <Upload className="size-3.5" />
                             Upload MP4
                         </Button>
@@ -169,21 +161,15 @@ export function CCTVFeedCard({
         )
     }
 
-    // ─────────────────────────────
-    // MD (NEW BALANCED MODE)
-    // ─────────────────────────────
+    // ── md: balanced mode with refresh + upload ──────────────────────
     if (size === "md") {
         return (
             <Card className="w-[95%] mx-auto ring-secondary hover:ring-secondary ring-1">
                 <CardHeader className="flex flex-col gap-1 py-3">
-                    <CardTitle className="text-base">
-                        {title ?? "Live CCTV monitoring"}
-                    </CardTitle>
-
+                    <CardTitle className="text-base">{title ?? "Live CCTV monitoring"}</CardTitle>
                     <CardDescription className="text-sm">
                         {description ?? "Direct camera feed from your CCTV source."}
                     </CardDescription>
-
                     <span className={pillClass}>{cfg.label}</span>
                 </CardHeader>
 
@@ -192,16 +178,17 @@ export function CCTVFeedCard({
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                         style={{ aspectRatio: "16/9" }}
                     >
-                        {isLive ? (
+                        {streamUrl && (
                             <img
                                 src={streamUrl}
-                                className="h-full w-full object-cover"
+                                alt="CCTV feed"
+                                className={cn("h-full w-full object-cover", !isLive && "hidden")}
+                                {...imgProps}
                             />
-                        ) : (
+                        )}
+                        {!isLive && (
                             <div className="flex h-full w-full items-center justify-center">
-                                <p className="text-sm text-white/40">
-                                    {cfg.message}
-                                </p>
+                                <p className="text-sm text-white/40">{cfg.message}</p>
                             </div>
                         )}
                     </div>
@@ -209,46 +196,46 @@ export function CCTVFeedCard({
 
                 <CardFooter className="flex items-center justify-between gap-4">
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>
-                            <span className="text-destructive font-medium">
-                                {detections}
-                            </span>{" "}
-                            detections
-                        </span>
-                        <span>
-                            <span className="text-destructive font-medium">
-                                {parkingSlots}
-                            </span>{" "}
-                            parking slots
-                        </span>
+                        <span><span className="text-destructive font-medium">{detections}</span> detections</span>
+                        <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
                     </div>
-
-                    {onRefresh && (
-                        <Button size="sm" onClick={onRefresh}>
-                            <RefreshCw className="size-3.5" />
-                            Refresh
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {onUpload && (
+                            <>
+                                <input
+                                    ref={fileRef}
+                                    type="file"
+                                    accept="video/mp4"
+                                    className="hidden"
+                                    onChange={handleFile}
+                                />
+                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                    <Upload className="size-3.5" />
+                                    Upload MP4
+                                </Button>
+                            </>
+                        )}
+                        {onRefresh && (
+                            <Button size="sm" onClick={onRefresh}>
+                                <RefreshCw className="size-3.5" />
+                                Refresh
+                            </Button>
+                        )}
+                    </div>
                 </CardFooter>
             </Card>
         )
     }
 
-    // ─────────────────────────────
-    // LG
-    // ─────────────────────────────
+    // ── lg: full-screen operator view ────────────────────────────────
     if (size === "lg") {
         return (
             <Card className="w-full ring-secondary hover:ring-secondary ring-1">
                 <CardHeader className="flex flex-col gap-1">
-                    <CardTitle>
-                        {title ?? "Live CCTV monitoring"}
-                    </CardTitle>
-
+                    <CardTitle>{title ?? "Live CCTV monitoring"}</CardTitle>
                     <CardDescription>
                         {description ?? "Full-screen operator view of parking system"}
                     </CardDescription>
-
                     <span className={pillClass}>{cfg.label}</span>
                 </CardHeader>
 
@@ -257,16 +244,17 @@ export function CCTVFeedCard({
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                         style={{ aspectRatio: "16/9", minHeight: "520px" }}
                     >
-                        {isLive ? (
+                        {streamUrl && (
                             <img
                                 src={streamUrl}
-                                className="h-full w-full object-cover"
+                                alt="CCTV live feed"
+                                className={cn("h-full w-full object-cover", !isLive && "hidden")}
+                                {...imgProps}
                             />
-                        ) : (
+                        )}
+                        {!isLive && (
                             <div className="flex h-full w-full items-center justify-center">
-                                <p className="text-sm text-white/40">
-                                    {cfg.message}
-                                </p>
+                                <p className="text-sm text-white/40">{cfg.message}</p>
                             </div>
                         )}
                     </div>
@@ -274,16 +262,9 @@ export function CCTVFeedCard({
 
                 <CardFooter className="flex justify-between">
                     <div className="text-xs text-muted-foreground">
-                        <span className="text-destructive font-medium">
-                            {detections}
-                        </span>{" "}
-                        detections •{" "}
-                        <span className="text-destructive font-medium">
-                            {parkingSlots}
-                        </span>{" "}
-                        slots
+                        <span className="text-destructive font-medium">{detections}</span> detections •{" "}
+                        <span className="text-destructive font-medium">{parkingSlots}</span> slots
                     </div>
-
                     {onRefresh && (
                         <Button size="sm" onClick={onRefresh}>
                             <RefreshCw className="size-3.5" />
@@ -295,20 +276,14 @@ export function CCTVFeedCard({
         )
     }
 
-    // ─────────────────────────────
-    // DEFAULT
-    // ─────────────────────────────
+    // ── default: full card ───────────────────────────────────────────
     return (
         <Card className="w-full ring-secondary hover:ring-secondary ring-1">
             <CardHeader className="flex flex-col gap-1">
-                <CardTitle>
-                    {title ?? "Live CCTV monitoring"}
-                </CardTitle>
-
+                <CardTitle>{title ?? "Live CCTV monitoring"}</CardTitle>
                 <CardDescription>
                     {description ?? "Direct camera feed from your CCTV source."}
                 </CardDescription>
-
                 <span className={pillClass}>{cfg.label}</span>
             </CardHeader>
 
@@ -317,16 +292,17 @@ export function CCTVFeedCard({
                     className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                     style={{ aspectRatio: "16/9" }}
                 >
-                    {isLive ? (
+                    {streamUrl && (
                         <img
                             src={streamUrl}
-                            className="h-full w-full object-cover"
+                            alt="CCTV live feed"
+                            className={cn("h-full w-full object-cover", !isLive && "hidden")}
+                            {...imgProps}
                         />
-                    ) : (
+                    )}
+                    {!isLive && (
                         <div className="flex h-full w-full items-center justify-center">
-                            <p className="text-sm text-white/40">
-                                {cfg.message}
-                            </p>
+                            <p className="text-sm text-white/40">{cfg.message}</p>
                         </div>
                     )}
                 </div>
@@ -334,26 +310,25 @@ export function CCTVFeedCard({
 
             <CardFooter className="flex items-center justify-between gap-4">
                 <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>
-                        <span className="text-destructive font-medium">
-                            {detections}
-                        </span>{" "}
-                        detections
-                    </span>
-                    <span>
-                        <span className="text-destructive font-medium">
-                            {parkingSlots}
-                        </span>{" "}
-                        parking slots
-                    </span>
+                    <span><span className="text-destructive font-medium">{detections}</span> detections</span>
+                    <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
                 </div>
-
-                {onRefresh && (
-                    <Button size="sm" onClick={onRefresh}>
-                        <RefreshCw className="size-3.5" />
-                        Refresh live feed
-                    </Button>
-                )}
+                <div className="flex items-center gap-3">
+                    {onRefresh && (
+                        <Button size="sm" onClick={onRefresh}>
+                            <RefreshCw className="size-3.5" />
+                            Refresh live feed
+                        </Button>
+                    )}
+                    {onTestConnection && (
+                        <button
+                            onClick={onTestConnection}
+                            className="text-xs text-muted-foreground underline-offset-4 hover:underline cursor-pointer"
+                        >
+                            Test camera connection
+                        </button>
+                    )}
+                </div>
             </CardFooter>
         </Card>
     )

@@ -4,32 +4,38 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
 type Props = {
-    onSubmit: (email: string, password: string) => void
-    onSignUp?: () => void
+    onSubmit: (name: string, email: string, password: string) => void
+    onLogin?: () => void
     className?: string
 }
 
-export function LoginForm({ onSubmit, onSignUp, className }: Props) {
+export function SignUpForm({ onSubmit, onLogin, className }: Props) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const form = e.currentTarget
+        const name = (form.elements.namedItem("name") as HTMLInputElement).value
         const email = (form.elements.namedItem("email") as HTMLInputElement).value
         const password = (form.elements.namedItem("password") as HTMLInputElement).value
-        onSubmit(email, password)
+        onSubmit(name, email, password)
     }
 
     return (
         <AuthCard className={className}>
             <div className="text-center flex flex-col gap-1">
-                <h1 className="text-2xl font-bold">Login</h1>
-                <p className="text-sm text-muted-foreground">Enter your credentials</p>
+                <h1 className="text-2xl font-bold">Create account</h1>
+                <p className="text-sm text-muted-foreground">Fill in your details to get started</p>
             </div>
 
             <form onSubmit={handleSubmit}>
                 <FieldGroup>
                     <Field>
+                        <FieldLabel>Full name</FieldLabel>
+                        <Input name="name" type="text" placeholder="Juan dela Cruz" required />
+                    </Field>
+
+                    <Field>
                         <FieldLabel>Email</FieldLabel>
-                        <Input name="email" type="email" required />
+                        <Input name="email" type="email" placeholder="you@example.com" required />
                     </Field>
 
                     <Field>
@@ -38,20 +44,25 @@ export function LoginForm({ onSubmit, onSignUp, className }: Props) {
                     </Field>
 
                     <Field>
-                        <Button type="submit" className="w-full">Login</Button>
+                        <FieldLabel>Confirm password</FieldLabel>
+                        <Input name="confirmPassword" type="password" required />
+                    </Field>
+
+                    <Field>
+                        <Button type="submit" className="w-full">Create account</Button>
                     </Field>
                 </FieldGroup>
             </form>
 
-            {onSignUp && (
+            {onLogin && (
                 <p className="text-center text-sm text-muted-foreground">
-                    Don't have an account?{" "}
+                    Already have an account?{" "}
                     <button
                         type="button"
-                        onClick={onSignUp}
+                        onClick={onLogin}
                         className="text-primary font-medium underline-offset-4 hover:underline cursor-pointer"
                     >
-                        Sign up
+                        Log in
                     </button>
                 </p>
             )}

@@ -12,6 +12,7 @@ const UPLOAD_URL = "http://localhost:8000/upload"
 
 export function DashboardPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
+    const [demoSrc, setDemoSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
 
     const handleRefresh = useCallback(() => {
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
@@ -20,14 +21,12 @@ export function DashboardPage() {
     const handleUpload = useCallback(async (file: File) => {
         const form = new FormData()
         form.append("file", file, file.name)
-
-        await fetch(UPLOAD_URL, {
-            method: "POST",
-            body: form,
-        })
-
-        // refresh stream after upload
-        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
+        try {
+            await fetch(UPLOAD_URL, { method: "POST", body: form })
+        } catch {
+            // backend not running — stream will show disconnected
+        }
+        setDemoSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
     return (
@@ -36,18 +35,20 @@ export function DashboardPage() {
                 title="Dashboard"
                 description="Real-time occupancy monitoring"
             />
-
             <DashboardContentLayout
                 feed={
-                    <div className="grid grid-cols-1">
-                        {/* SINGLE BIG TV (now includes upload) */}
+                    <div className="flex flex-col gap-4">
                         <CCTVFeedCard
-                            size="md"
-                            status="live"
                             streamUrl={streamSrc}
                             detections={0}
                             parkingSlots={0}
                             onRefresh={handleRefresh}
+                        />
+                        <CCTVFeedCard
+                            size="sm"
+                            streamUrl={demoSrc}
+                            title="Demo Inference"
+                            description="Upload an MP4 to run detection"
                             onUpload={handleUpload}
                         />
                     </div>
