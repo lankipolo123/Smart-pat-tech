@@ -49,16 +49,10 @@ export function CCTVPage() {
                         />
                     </div>
 
-                    {/* Right: 2-column panel (stats | slots) */}
-                    <div className="flex-[2] flex gap-4 min-w-0">
-                        {/* Col 1: stat cards stacked */}
-                        <div className="flex-1 min-w-0">
-                            <ParkingStatsCards vertical />
-                        </div>
-                        {/* Col 2: parking slots grid */}
-                        <div className="flex-1 min-w-0">
-                            <ParkingSlotsGrid compact />
-                        </div>
+                    {/* Right: stat cards above parking slots */}
+                    <div className="flex-[2] flex flex-col gap-4 min-w-0">
+                        <ParkingStatsCards />
+                        <ParkingSlotsGrid />
                     </div>
 
                 </div>
