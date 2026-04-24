@@ -1,7 +1,9 @@
 import cv2
+import re
 import time
 import os
 import threading
+import subprocess
 import torch
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
@@ -174,23 +176,65 @@ class WebcamRequest(BaseModel):
     index: int = 0
 
 
-def _camera_name(index: int) -> str:
+def _v4l2_devices() -> dict[int, str]:
+    """
+    Parse `v4l2-ctl --list-devices` into {video_index: human_name}.
+    Returns only the first (capture) node per physical device to avoid duplicates.
+    Example output line: "Logitech BRIO (usb-0000:00:14.0-5):"
+    """
     try:
-        with open(f"/sys/class/video4linux/video{index}/name") as f:
-            return f.read().strip()
+        out = subprocess.run(
+            ["v4l2-ctl", "--list-devices"],
+            capture_output=True, text=True, timeout=3
+        ).stdout
+        devices: dict[int, str] = {}
+        current_name: str | None = None
+        for line in out.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if not line.startswith(("\t", " ")):
+                # strip the "(usb-xxx):" part to get the clean device name
+                current_name = re.sub(r"\s*\(.*\):?$", "", line).strip()
+            elif stripped.startswith("/dev/video"):
+                idx = int(stripped.removeprefix("/dev/video"))
+                if current_name and idx not in devices:   # keep first node only
+                    devices[idx] = current_name
+        return devices
     except Exception:
-        return f"Camera {index}"
+        return {}
 
 
 @app.get("/cameras")
 def list_cameras():
-    """Return all camera indices that can be opened."""
+    """Return openable cameras with real device names."""
+    v4l2 = _v4l2_devices()
+    seen_names: set[str] = set()
     cameras = []
+
     for i in range(8):
         cap = cv2.VideoCapture(i)
-        if cap.isOpened():
-            cameras.append({"index": i, "name": _camera_name(i)})
+        if not cap.isOpened():
             cap.release()
+            continue
+
+        # prefer v4l2 name → sysfs name → fallback
+        name = v4l2.get(i)
+        if not name:
+            try:
+                with open(f"/sys/class/video4linux/video{i}/name") as f:
+                    name = f.read().strip()
+            except Exception:
+                name = f"Camera {i}"
+
+        cap.release()
+
+        # skip duplicate physical devices (e.g. video0 and video1 same camera)
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        cameras.append({"index": i, "name": name})
+
     return cameras
 
 
