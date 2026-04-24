@@ -6,6 +6,7 @@ import { CCTVFeedCard } from "@/components/cctv-feed-card"
 import { ActiveAlerts } from "@/components/active-alerts"
 import { ParkingStatusLegend } from "@/components/parking-status-legend"
 import { ParkingSummary } from "@/components/parking-summary"
+import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
 
 const STREAM_URL = "http://localhost:8000/video"
 const UPLOAD_URL = "http://localhost:8000/upload"
@@ -47,6 +48,7 @@ export function DashboardPage() {
                 alerts={<ActiveAlerts />}
                 legend={<ParkingStatusLegend />}
                 summary={<ParkingSummary />}
+                slots={<ParkingSlotsGrid compact />}
             />
         </PageContent>
     )
