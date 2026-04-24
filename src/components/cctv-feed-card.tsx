@@ -242,7 +242,7 @@ export function CCTVFeedCard({
                 <CardContent>
                     <div
                         className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
-                        style={{ aspectRatio: "16/9", minHeight: "520px" }}
+                        style={{ aspectRatio: "16/9", minHeight: "360px" }}
                     >
                         {streamUrl && (
                             <img
