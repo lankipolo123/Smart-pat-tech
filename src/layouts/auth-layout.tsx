@@ -35,17 +35,6 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
                 </div>
             )}
 
-            {/* BRAND HEADER — signup only */}
-            {isSignup && (
-                <div className="relative z-10 flex justify-center md:justify-end">
-                    <img
-                        src="https://i.imgur.com/xDSUCZY_d.webp?maxwidth=760&fidelity=grand"
-                        alt="TechSentinel Logo"
-                        className="h-16 w-auto object-contain"
-                    />
-                </div>
-            )}
-
             {/* FORM AREA */}
             <div className="relative z-10 flex flex-1 items-center justify-center">
                 <div className="w-full max-w-xs">

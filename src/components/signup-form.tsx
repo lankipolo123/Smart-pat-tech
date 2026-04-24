@@ -21,6 +21,14 @@ export function SignUpForm({ onSubmit, onLogin, className }: Props) {
 
     return (
         <AuthCard className={className}>
+            <div className="flex justify-center">
+                <img
+                    src="https://i.imgur.com/xDSUCZY_d.webp?maxwidth=760&fidelity=grand"
+                    alt="TechSentinel Logo"
+                    className="h-14 w-auto object-contain"
+                />
+            </div>
+
             <div className="text-center flex flex-col gap-1">
                 <h1 className="text-2xl font-bold">Create account</h1>
                 <p className="text-sm text-muted-foreground">Fill in your details to get started</p>
