@@ -24,17 +24,27 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
                 }}
             />
 
-            {/* FLOATING LOGO */}
-            <div className={`absolute z-10 ${isSignup
-                ? "-top-[44px] -right-6 md:-top-[70px] md:-right-16"
-                : "-top-[44px] -left-6 md:-top-[70px] md:-left-16"
-            }`}>
-                <img
-                    src="https://i.imgur.com/k0G0eJ2.png"
-                    alt="Logo"
-                    className={`h-80 w-80 object-contain ${isSignup ? "scale-x-[-1]" : ""}`}
-                />
-            </div>
+            {/* FLOATING LOGO — login only */}
+            {!isSignup && (
+                <div className="absolute z-10 -top-[44px] -left-6 md:-top-[70px] md:-left-16">
+                    <img
+                        src="https://i.imgur.com/k0G0eJ2.png"
+                        alt="Logo"
+                        className="h-80 w-80 object-contain"
+                    />
+                </div>
+            )}
+
+            {/* BRAND HEADER — signup only */}
+            {isSignup && (
+                <div className="relative z-10 flex justify-center md:justify-end">
+                    <img
+                        src="https://i.imgur.com/xDSUCZY_d.webp?maxwidth=760&fidelity=grand"
+                        alt="TechSentinel Logo"
+                        className="h-16 w-auto object-contain"
+                    />
+                </div>
+            )}
 
             {/* FORM AREA */}
             <div className="relative z-10 flex flex-1 items-center justify-center">
