@@ -33,19 +33,32 @@ export function CCTVPage() {
                 description="Live parking slot monitoring"
             />
 
-            <div className="px-6 pt-4 pb-8 flex flex-col gap-6">
-                <ParkingStatsCards />
+            <div className="px-6 pt-4 pb-8">
+                {/* Main 2-panel layout */}
+                <div className="flex gap-4 items-start">
 
-                <CCTVFeedCard
-                    size="md"
-                    streamUrl={streamSrc}
-                    detections={0}
-                    parkingSlots={0}
-                    onRefresh={handleRefresh}
-                    onUpload={handleUpload}
-                />
+                    {/* Left: huge CCTV feed */}
+                    <div className="flex-[3] min-w-0">
+                        <CCTVFeedCard
+                            size="md"
+                            streamUrl={streamSrc}
+                            detections={0}
+                            parkingSlots={0}
+                            onRefresh={handleRefresh}
+                            onUpload={handleUpload}
+                        />
+                    </div>
 
-                <ParkingSlotsGrid />
+                    {/* Right: 2-column panel (stats | slots) */}
+                    <div className="flex-[2] grid grid-cols-2 gap-4 min-w-0">
+                        {/* Col 1: stat cards stacked */}
+                        <ParkingStatsCards vertical />
+
+                        {/* Col 2: parking slots grid */}
+                        <ParkingSlotsGrid compact />
+                    </div>
+
+                </div>
             </div>
         </PageContent>
     )

@@ -40,12 +40,12 @@ export function ParkingSummary({ data = DEFAULT_DATA }: Props) {
             <div className="flex flex-col gap-2">
                 {SUMMARY_ITEMS.map(({ label, valueKey, icon: Icon, valueColor }) => (
                     <Card key={label} size="sm">
-                        <CardContent className="flex items-center justify-between py-3">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Icon className="size-3.5" />
+                        <CardContent className="flex items-center justify-between px-3 py-1.5">
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <Icon className="size-3" />
                                 <span className="uppercase tracking-wide font-medium">{label}</span>
                             </div>
-                            <span className={`text-xl font-bold ${valueColor}`}>
+                            <span className={`text-sm font-bold ${valueColor}`}>
                                 {data[valueKey]}
                             </span>
                         </CardContent>

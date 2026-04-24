@@ -8,27 +8,32 @@ const LEGEND = [
     { label: "Reserved", dot: "bg-orange-400" },
 ]
 
-export function ParkingSlotsGrid() {
+type Props = {
+    compact?: boolean
+}
+
+export function ParkingSlotsGrid({ compact }: Props) {
     const slots = parkingSlotsData
 
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between flex-wrap gap-2">
                     <div>
-                        <CardTitle>Parking Slots</CardTitle>
-                        <CardDescription>
-                            Real-time slot status from CCTV detection
-                        </CardDescription>
+                        <CardTitle className={compact ? "text-sm" : undefined}>Parking Slots</CardTitle>
+                        {!compact && (
+                            <CardDescription>
+                                Real-time slot status from CCTV detection
+                            </CardDescription>
+                        )}
                     </div>
-
-                    <div className="flex gap-4">
+                    <div className="flex gap-3 flex-wrap">
                         {LEGEND.map(l => (
                             <div
                                 key={l.label}
                                 className="flex items-center gap-1.5 text-xs text-muted-foreground"
                             >
-                                <span className={`size-2.5 rounded-full ${l.dot}`} />
+                                <span className={`size-2 rounded-full ${l.dot}`} />
                                 {l.label}
                             </div>
                         ))}
@@ -37,7 +42,7 @@ export function ParkingSlotsGrid() {
             </CardHeader>
 
             <CardContent>
-                <div className="grid grid-cols-5 gap-3">
+                <div className={compact ? "grid grid-cols-2 gap-2" : "grid grid-cols-5 gap-3"}>
                     {slots.map(slot => (
                         <ParkingSlotCard key={slot.id} slot={slot} />
                     ))}
