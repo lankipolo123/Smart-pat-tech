@@ -4,6 +4,7 @@ import os
 import threading
 import torch
 from fastapi import FastAPI, UploadFile, File
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,11 +53,16 @@ frame_lock    = threading.Lock()
 cap_lock      = threading.Lock()
 cap: cv2.VideoCapture | None = None
 _running      = False
+_loop_source  = False   # True only for uploaded MP4 files
 
 
 def open_source(source):
-    """Switch capture source to webcam (0) or a file path."""
-    global cap, tracker, _running
+    """Switch capture source: 0=webcam, file path, or rtsp/http URL."""
+    global cap, tracker, _running, _loop_source
+
+    _loop_source = isinstance(source, str) and not any(
+        source.startswith(p) for p in ("rtsp://", "rtmp://", "http://", "https://")
+    )
 
     with cap_lock:
         if cap:
@@ -94,9 +100,10 @@ def _inference_loop():
             ret, frame = cap.read()
 
         if not ret:
-            with cap_lock:
-                if cap:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # loop video
+            if _loop_source:
+                with cap_lock:
+                    if cap:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # loop uploaded file
             time.sleep(0.01)
             continue
 
@@ -159,9 +166,20 @@ open_source(0)
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
+class SourceRequest(BaseModel):
+    url: str
+
+
+@app.post("/connect")
+def connect_source(body: SourceRequest):
+    """Connect to any CCTV/IP camera URL (rtsp://, http://, etc.)."""
+    open_source(body.url)
+    return {"status": "ok"}
+
+
 @app.post("/webcam")
 def use_webcam():
-    """Switch back to webcam (call from frontend after demo upload)."""
+    """Switch back to webcam."""
     open_source(0)
     return {"status": "ok"}
 

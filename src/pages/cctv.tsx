@@ -5,9 +5,10 @@ import { CCTVFeedCard } from "@/components/cctv-feed-card"
 import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
 import { ParkingStatsCards } from "@/components/parking-stat-card"
 
-const STREAM_URL = "http://localhost:8000/video"
-const UPLOAD_URL = "http://localhost:8000/upload"
-const WEBCAM_URL = "http://localhost:8000/webcam"
+const STREAM_URL  = "http://localhost:8000/video"
+const UPLOAD_URL  = "http://localhost:8000/upload"
+const WEBCAM_URL  = "http://localhost:8000/webcam"
+const CONNECT_URL = "http://localhost:8000/connect"
 
 export function CCTVPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
@@ -32,6 +33,17 @@ export function CCTVPage() {
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
+    const handleConnect = useCallback(async (url: string) => {
+        try {
+            await fetch(CONNECT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url }),
+            })
+        } catch {}
+        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
+    }, [])
+
     return (
         <PageContent>
             <PageHeader
@@ -53,6 +65,7 @@ export function CCTVPage() {
                             onRefresh={handleRefresh}
                             onUpload={handleUpload}
                             onWebcam={handleWebcam}
+                            onConnect={handleConnect}
                         />
                     </div>
 

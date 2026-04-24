@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useRef, useState } from "react"
+import { useRef, useState, useCallback } from "react"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
 export type CCTVSize = "compact" | "sm" | "md" | "default" | "lg"
@@ -25,6 +25,7 @@ type Props = {
     onTestConnection?: () => void
     onUpload?: (file: File) => void
     onWebcam?: () => void
+    onConnect?: (url: string) => void
 }
 
 const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: string }> = {
@@ -56,10 +57,19 @@ export function CCTVFeedCard({
     onTestConnection,
     onUpload,
     onWebcam,
+    onConnect,
 }: Props) {
     // null = no response yet (connecting), true = loaded (live), false = error (disconnected)
     const [connected, setConnected] = useState<boolean | null>(null)
+    const [cctvUrl, setCctvUrl] = useState("")
     const fileRef = useRef<HTMLInputElement>(null)
+
+    const handleConnect = useCallback(() => {
+        if (cctvUrl.trim()) {
+            onConnect?.(cctvUrl.trim())
+            setCctvUrl("")
+        }
+    }, [cctvUrl, onConnect])
 
     const derivedStatus: CCTVStatus = connected === true ? "live" : connected === false ? "disconnected" : "connecting"
     const cfg = statusConfig[derivedStatus]
@@ -196,39 +206,56 @@ export function CCTVFeedCard({
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex items-center justify-between gap-4">
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span><span className="text-destructive font-medium">{detections}</span> detections</span>
-                        <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {onUpload && (
-                            <>
-                                <input
-                                    ref={fileRef}
-                                    type="file"
-                                    accept="video/mp4"
-                                    className="hidden"
-                                    onChange={handleFile}
-                                />
-                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                                    <Upload className="size-3.5" />
-                                    Upload MP4
+                <CardFooter className="flex flex-col gap-2">
+                    {onConnect && (
+                        <div className="flex w-full items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder="rtsp://... or http://..."
+                                value={cctvUrl}
+                                onChange={e => setCctvUrl(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleConnect()}
+                                className="flex-1 h-8 rounded-md border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <Button size="sm" disabled={!cctvUrl.trim()} onClick={handleConnect}>
+                                Connect CCTV
+                            </Button>
+                        </div>
+                    )}
+                    <div className="flex w-full items-center justify-between gap-4">
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                            <span><span className="text-destructive font-medium">{detections}</span> detections</span>
+                            <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {onUpload && (
+                                <>
+                                    <input
+                                        ref={fileRef}
+                                        type="file"
+                                        accept="video/mp4"
+                                        className="hidden"
+                                        onChange={handleFile}
+                                    />
+                                    <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                        <Upload className="size-3.5" />
+                                        Upload MP4
+                                    </Button>
+                                </>
+                            )}
+                            {onWebcam && (
+                                <Button size="sm" variant="outline" onClick={onWebcam}>
+                                    <Camera className="size-3.5" />
+                                    Use Webcam
                                 </Button>
-                            </>
-                        )}
-                        {onWebcam && (
-                            <Button size="sm" variant="outline" onClick={onWebcam}>
-                                <Camera className="size-3.5" />
-                                Use Webcam
-                            </Button>
-                        )}
-                        {onRefresh && (
-                            <Button size="sm" onClick={onRefresh}>
-                                <RefreshCw className="size-3.5" />
-                                Refresh
-                            </Button>
-                        )}
+                            )}
+                            {onRefresh && (
+                                <Button size="sm" onClick={onRefresh}>
+                                    <RefreshCw className="size-3.5" />
+                                    Refresh
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </CardFooter>
             </Card>
@@ -268,33 +295,50 @@ export function CCTVFeedCard({
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex justify-between">
-                    <div className="text-xs text-muted-foreground">
-                        <span className="text-destructive font-medium">{detections}</span> detections •{" "}
-                        <span className="text-destructive font-medium">{parkingSlots}</span> slots
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {onUpload && (
-                            <>
-                                <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
-                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                                    <Upload className="size-3.5" />
-                                    Upload MP4
+                <CardFooter className="flex flex-col gap-2">
+                    {onConnect && (
+                        <div className="flex w-full items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder="rtsp://... or http://..."
+                                value={cctvUrl}
+                                onChange={e => setCctvUrl(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleConnect()}
+                                className="flex-1 h-8 rounded-md border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <Button size="sm" disabled={!cctvUrl.trim()} onClick={handleConnect}>
+                                Connect CCTV
+                            </Button>
+                        </div>
+                    )}
+                    <div className="flex w-full items-center justify-between gap-4">
+                        <div className="text-xs text-muted-foreground">
+                            <span className="text-destructive font-medium">{detections}</span> detections •{" "}
+                            <span className="text-destructive font-medium">{parkingSlots}</span> slots
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {onUpload && (
+                                <>
+                                    <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
+                                    <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                        <Upload className="size-3.5" />
+                                        Upload MP4
+                                    </Button>
+                                </>
+                            )}
+                            {onWebcam && (
+                                <Button size="sm" variant="outline" onClick={onWebcam}>
+                                    <Camera className="size-3.5" />
+                                    Use Webcam
                                 </Button>
-                            </>
-                        )}
-                        {onWebcam && (
-                            <Button size="sm" variant="outline" onClick={onWebcam}>
-                                <Camera className="size-3.5" />
-                                Use Webcam
-                            </Button>
-                        )}
-                        {onRefresh && (
-                            <Button size="sm" onClick={onRefresh}>
-                                <RefreshCw className="size-3.5" />
-                                Refresh
-                            </Button>
-                        )}
+                            )}
+                            {onRefresh && (
+                                <Button size="sm" onClick={onRefresh}>
+                                    <RefreshCw className="size-3.5" />
+                                    Refresh
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </CardFooter>
             </Card>
@@ -333,41 +377,58 @@ export function CCTVFeedCard({
                 </div>
             </CardContent>
 
-            <CardFooter className="flex items-center justify-between gap-4">
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span><span className="text-destructive font-medium">{detections}</span> detections</span>
-                    <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    {onUpload && (
-                        <>
-                            <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
-                            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                                <Upload className="size-3.5" />
-                                Upload MP4
+            <CardFooter className="flex flex-col gap-2">
+                {onConnect && (
+                    <div className="flex w-full items-center gap-2">
+                        <input
+                            type="text"
+                            placeholder="rtsp://... or http://..."
+                            value={cctvUrl}
+                            onChange={e => setCctvUrl(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && handleConnect()}
+                            className="flex-1 h-8 rounded-md border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        <Button size="sm" disabled={!cctvUrl.trim()} onClick={handleConnect}>
+                            Connect CCTV
+                        </Button>
+                    </div>
+                )}
+                <div className="flex w-full items-center justify-between gap-4">
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span><span className="text-destructive font-medium">{detections}</span> detections</span>
+                        <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {onUpload && (
+                            <>
+                                <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
+                                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                    <Upload className="size-3.5" />
+                                    Upload MP4
+                                </Button>
+                            </>
+                        )}
+                        {onWebcam && (
+                            <Button size="sm" variant="outline" onClick={onWebcam}>
+                                <Camera className="size-3.5" />
+                                Use Webcam
                             </Button>
-                        </>
-                    )}
-                    {onWebcam && (
-                        <Button size="sm" variant="outline" onClick={onWebcam}>
-                            <Camera className="size-3.5" />
-                            Use Webcam
-                        </Button>
-                    )}
-                    {onRefresh && (
-                        <Button size="sm" onClick={onRefresh}>
-                            <RefreshCw className="size-3.5" />
-                            Refresh live feed
-                        </Button>
-                    )}
-                    {onTestConnection && (
-                        <button
-                            onClick={onTestConnection}
-                            className="text-xs text-muted-foreground underline-offset-4 hover:underline cursor-pointer"
-                        >
-                            Test camera connection
-                        </button>
-                    )}
+                        )}
+                        {onRefresh && (
+                            <Button size="sm" onClick={onRefresh}>
+                                <RefreshCw className="size-3.5" />
+                                Refresh live feed
+                            </Button>
+                        )}
+                        {onTestConnection && (
+                            <button
+                                onClick={onTestConnection}
+                                className="text-xs text-muted-foreground underline-offset-4 hover:underline cursor-pointer"
+                            >
+                                Test camera connection
+                            </button>
+                        )}
+                    </div>
                 </div>
             </CardFooter>
         </Card>
