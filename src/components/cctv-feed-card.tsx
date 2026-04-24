@@ -313,7 +313,16 @@ export function CCTVFeedCard({
                     <span><span className="text-destructive font-medium">{detections}</span> detections</span>
                     <span><span className="text-destructive font-medium">{parkingSlots}</span> parking slots</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                    {onUpload && (
+                        <>
+                            <input ref={fileRef} type="file" accept="video/mp4" className="hidden" onChange={handleFile} />
+                            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                                <Upload className="size-3.5" />
+                                Upload MP4
+                            </Button>
+                        </>
+                    )}
                     {onRefresh && (
                         <Button size="sm" onClick={onRefresh}>
                             <RefreshCw className="size-3.5" />
