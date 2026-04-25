@@ -3,6 +3,8 @@ import { createContext, useContext, ReactNode } from "react"
 export type AuthUser = {
     name: string
     email: string
+    joinedAt: string | null
+    lastLogin: string | null
 }
 
 const AuthContext = createContext<AuthUser | null>(null)

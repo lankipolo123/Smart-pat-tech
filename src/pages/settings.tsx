@@ -10,8 +10,17 @@ import { ManageAccountCard } from "@/components/manage-account-card"
 import { useAuth } from "@/contexts/auth-context"
 import { accountActions } from "@/configs/account-actions"
 
+function formatDate(iso: string | null): string {
+    if (!iso) return "—"
+    return new Date(iso).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })
+}
+
 export function SettingsPage() {
-    const { name, email } = useAuth()
+    const { name, email, joinedAt, lastLogin } = useAuth()
 
     const [firstName, ...rest] = name.split(" ")
     const lastName = rest.join(" ")
@@ -29,6 +38,8 @@ export function SettingsPage() {
                         role="User"
                         email={email}
                         status="active"
+                        joinedDate={formatDate(joinedAt)}
+                        lastLogin={formatDate(lastLogin)}
                     />
                 }
                 two={

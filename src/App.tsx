@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
-type SessionUser = { token: string; name: string; email: string }
+type SessionUser = { token: string; name: string; email: string; joinedAt: string | null; lastLogin: string | null }
 type AuthDialog = "created" | "exists" | null
 
 function App() {
@@ -38,8 +38,8 @@ function App() {
     setLoading(true)
     try {
       const data = await loginUser(email, password)
-      saveSession(data.access_token, data.name, data.email)
-      setSession({ token: data.access_token, name: data.name, email: data.email })
+      saveSession(data.access_token, data.name, data.email, data.joined_at, data.last_login)
+      setSession({ token: data.access_token, name: data.name, email: data.email, joinedAt: data.joined_at, lastLogin: data.last_login })
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Could not reach server")
     } finally {
@@ -52,8 +52,8 @@ function App() {
     setLoading(true)
     try {
       const data = await registerUser(name, email, password)
-      saveSession(data.access_token, data.name, data.email)
-      setPendingSession({ token: data.access_token, name: data.name, email: data.email })
+      saveSession(data.access_token, data.name, data.email, data.joined_at, data.last_login)
+      setPendingSession({ token: data.access_token, name: data.name, email: data.email, joinedAt: data.joined_at, lastLogin: data.last_login })
       setDialog("created")
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not reach server"
