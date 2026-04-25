@@ -30,7 +30,7 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
                     <img
                         src="https://i.imgur.com/k0G0eJ2.png"
                         alt="Logo"
-                        className="h-[317px] w-[317px] object-contain"
+                        className="h-[280px] w-[280px] object-contain"
                     />
                 </div>
             )}
