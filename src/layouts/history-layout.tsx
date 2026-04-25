@@ -18,9 +18,11 @@ export function HistoryLayout({ tabs, stats, chart, table }: Props) {
                 {stats}
             </section>
 
-            <section aria-label="chart">
-                {chart}
-            </section>
+            {chart && (
+                <section aria-label="chart">
+                    {chart}
+                </section>
+            )}
 
             <section aria-label="session-table">
                 {table}
