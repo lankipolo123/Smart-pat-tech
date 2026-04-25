@@ -1,5 +1,7 @@
-import psycopg2
 import bcrypt
+import psycopg2
+from psycopg2 import pool as pg_pool
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from jose import jwt
 
@@ -8,17 +10,36 @@ SECRET_KEY   = "smartpat-secret-key-change-in-prod"
 ALGORITHM    = "HS256"
 TOKEN_DAYS   = 7
 
+_pool: pg_pool.ThreadedConnectionPool | None = None
+
+
+def _get_pool() -> pg_pool.ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = pg_pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
+    return _pool
+
+
+@contextmanager
+def get_conn():
+    pool = _get_pool()
+    conn = pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)
+
 
 def _hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=10)).decode()
 
 
 def _verify(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
-
-
-def get_conn():
-    return psycopg2.connect(DATABASE_URL)
 
 
 def init_db():
@@ -35,7 +56,6 @@ def init_db():
                 )
             """)
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP")
-        conn.commit()
 
 
 def _make_token(user_id: int) -> str:
@@ -58,7 +78,6 @@ def register(name: str, email: str, password: str) -> dict:
                 (name, email, _hash(password))
             )
             user_id, created_at, last_login = cur.fetchone()
-        conn.commit()
     return {
         "access_token": _make_token(user_id),
         "name": name,
@@ -83,7 +102,6 @@ def login(email: str, password: str) -> dict:
                 (row[0],)
             )
             last_login = cur.fetchone()[0]
-        conn.commit()
     return {
         "access_token": _make_token(row[0]),
         "name": row[1],
