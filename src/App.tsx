@@ -22,33 +22,31 @@ import {
 import { Button } from "@/components/ui/button"
 
 type SessionUser = { token: string; name: string; email: string; joinedAt: string | null; lastLogin: string | null }
-type AuthDialog = "created" | "exists" | null
+type AuthDialog = "created" | "exists" | "login-invalid" | "login-server" | null
 
 function App() {
   const [session, setSession] = useState<SessionUser | null>(() => loadSession())
   const [authPage, setAuthPage] = useState<"login" | "signup">("login")
   const [active, setActive] = useState("dashboard")
-  const [authError, setAuthError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dialog, setDialog] = useState<AuthDialog>(null)
   const [pendingSession, setPendingSession] = useState<SessionUser | null>(null)
 
   const handleLogin = async (email: string, password: string) => {
-    setAuthError("")
     setLoading(true)
     try {
       const data = await loginUser(email, password)
       saveSession(data.access_token, data.name, data.email, data.joined_at, data.last_login)
       setSession({ token: data.access_token, name: data.name, email: data.email, joinedAt: data.joined_at, lastLogin: data.last_login })
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "Could not reach server")
+      const msg = err instanceof Error ? err.message : ""
+      setDialog(msg === "Invalid email or password" ? "login-invalid" : "login-server")
     } finally {
       setLoading(false)
     }
   }
 
   const handleSignUp = async (name: string, email: string, password: string) => {
-    setAuthError("")
     setLoading(true)
     try {
       const data = await registerUser(name, email, password)
@@ -56,12 +54,8 @@ function App() {
       setPendingSession({ token: data.access_token, name: data.name, email: data.email, joinedAt: data.joined_at, lastLogin: data.last_login })
       setDialog("created")
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not reach server"
-      if (msg === "Email already registered") {
-        setDialog("exists")
-      } else {
-        setAuthError(msg)
-      }
+      const msg = err instanceof Error ? err.message : ""
+      setDialog(msg === "Email already registered" ? "exists" : "login-server")
     } finally {
       setLoading(false)
     }
@@ -73,68 +67,89 @@ function App() {
     setAuthPage("login")
   }
 
-  const handleCreatedContinue = () => {
-    setDialog(null)
-    if (pendingSession) setSession(pendingSession)
-  }
-
-  const handleExistsLogin = () => {
-    setDialog(null)
-    setAuthError("")
-    setAuthPage("login")
-  }
-
   if (!session) {
-    if (authPage === "signup") {
-      return (
-        <>
+    return (
+      <>
+        {authPage === "signup" ? (
           <SignUpPage
             onSignUp={handleSignUp}
-            onLogin={() => { setAuthError(""); setAuthPage("login") }}
-            error={authError}
+            onLogin={() => { setDialog(null); setAuthPage("login") }}
             loading={loading}
           />
+        ) : (
+          <LoginPage
+            onLogin={handleLogin}
+            onSignUp={() => { setDialog(null); setAuthPage("signup") }}
+            loading={loading}
+          />
+        )}
 
-          {/* Account created */}
-          <Dialog open={dialog === "created"} onOpenChange={() => {}}>
-            <DialogContent showCloseButton={false}>
-              <DialogHeader>
-                <DialogTitle>Account created!</DialogTitle>
-                <DialogDescription>
-                  Welcome, {pendingSession?.name}. Your account has been set up successfully.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button onClick={handleCreatedContinue}>Get started</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        {/* Account created */}
+        <Dialog open={dialog === "created"} onOpenChange={() => {}}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Account created!</DialogTitle>
+              <DialogDescription>
+                Welcome, {pendingSession?.name}. Your account has been set up successfully.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => { setDialog(null); if (pendingSession) setSession(pendingSession) }}>
+                Get started
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-          {/* Email already exists */}
-          <Dialog open={dialog === "exists"} onOpenChange={() => {}}>
-            <DialogContent showCloseButton={false}>
-              <DialogHeader>
-                <DialogTitle>Account already exists</DialogTitle>
-                <DialogDescription>
-                  An account with that email is already registered. Would you like to log in instead?
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-                <Button onClick={handleExistsLogin}>Go to login</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
-      )
-    }
-    return (
-      <LoginPage
-        onLogin={handleLogin}
-        onSignUp={() => { setAuthError(""); setAuthPage("signup") }}
-        error={authError}
-        loading={loading}
-      />
+        {/* Email already exists */}
+        <Dialog open={dialog === "exists"} onOpenChange={() => {}}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Account already exists</DialogTitle>
+              <DialogDescription>
+                An account with that email is already registered. Would you like to log in instead?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+              <Button onClick={() => { setDialog(null); setAuthPage("login") }}>Go to login</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Invalid credentials */}
+        <Dialog open={dialog === "login-invalid"} onOpenChange={() => {}}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Invalid credentials</DialogTitle>
+              <DialogDescription>
+                The email or password you entered is incorrect. Please try again or create a new account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDialog(null); setAuthPage("signup") }}>
+                Create account
+              </Button>
+              <Button onClick={() => setDialog(null)}>Try again</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Server unreachable */}
+        <Dialog open={dialog === "login-server"} onOpenChange={() => {}}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>Could not connect</DialogTitle>
+              <DialogDescription>
+                Unable to reach the server. Make sure the backend is running and try again.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setDialog(null)}>Try again</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     )
   }
 
