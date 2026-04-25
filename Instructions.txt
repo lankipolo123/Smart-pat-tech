@@ -1,0 +1,8 @@
+//backend run
+at terminal 
+type CD backend
+uvicorn main:app --reload
+//frontend run 
+at the terminal also add a new terminal(cmd) 
+and run 
+npm run dev
