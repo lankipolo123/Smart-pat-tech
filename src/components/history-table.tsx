@@ -98,10 +98,20 @@ export function HistoryTable({ range }: Props) {
                             <TableRow key={s.id} className={i % 2 !== 0 ? "bg-muted/10" : ""}>
                                 <TableCell className="px-4 font-medium">{s.slot}</TableCell>
                                 <TableCell className="px-4 text-muted-foreground">{formatDateTime(s.entry)}</TableCell>
-                                <TableCell className="px-4 text-muted-foreground">{formatDateTime(s.exit)}</TableCell>
-                                <TableCell className="px-4">{formatDuration(s.durationMin)}</TableCell>
+                                <TableCell className="px-4 text-muted-foreground">
+                                    {s.exit === null
+                                        ? <span className="text-green-600 font-medium text-xs">Ongoing</span>
+                                        : formatDateTime(s.exit)}
+                                </TableCell>
+                                <TableCell className="px-4">
+                                    {s.exit === null
+                                        ? <span className="text-green-600 font-medium text-xs">Ongoing</span>
+                                        : formatDuration(s.durationMin)}
+                                </TableCell>
                                 <TableCell className="px-4 font-medium text-primary">
-                                    {s.bill !== null ? `₱${s.bill.toFixed(2)}` : "—"}
+                                    {s.exit === null
+                                        ? <span className="text-green-600 font-medium text-xs">Ongoing</span>
+                                        : s.bill !== null ? `₱${s.bill.toFixed(2)}` : "—"}
                                 </TableCell>
                                 <TableCell className="px-4"><StatusBadge session={s} /></TableCell>
                             </TableRow>
