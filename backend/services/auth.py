@@ -1,6 +1,6 @@
 import psycopg2
+import bcrypt
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
 from jose import jwt
 
 DATABASE_URL = "postgresql://neondb_owner:npg_cGd5utiCsv6K@ep-patient-unit-aoepu54a-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
@@ -8,7 +8,13 @@ SECRET_KEY   = "smartpat-secret-key-change-in-prod"
 ALGORITHM    = "HS256"
 TOKEN_DAYS   = 7
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 def get_conn():
@@ -45,7 +51,7 @@ def register(name: str, email: str, password: str) -> dict:
                 raise ValueError("Email already registered")
             cur.execute(
                 "INSERT INTO users (name, email, hashed_password) VALUES (%s, %s, %s) RETURNING id",
-                (name, email, pwd_ctx.hash(password))
+                (name, email, _hash(password))
             )
             user_id = cur.fetchone()[0]
         conn.commit()
@@ -57,6 +63,6 @@ def login(email: str, password: str) -> dict:
         with conn.cursor() as cur:
             cur.execute("SELECT id, name, hashed_password FROM users WHERE email = %s", (email,))
             row = cur.fetchone()
-    if not row or not pwd_ctx.verify(password, row[2]):
+    if not row or not _verify(password, row[2]):
         raise ValueError("Invalid email or password")
     return {"access_token": _make_token(row[0]), "name": row[1], "email": email}
