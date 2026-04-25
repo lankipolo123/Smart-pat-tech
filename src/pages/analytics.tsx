@@ -4,6 +4,7 @@ import { AnalyticsLayout } from "@/layouts/analytics-layout"
 import { AnalyticsStats } from "@/components/analytics-stats"
 import { AnalyticsCharts } from "@/components/analytics-charts"
 import { AnalyticsActivityChart } from "@/components/analytics-activity-chart"
+import { ExportDialog } from "@/components/export-dialog"
 
 export function AnalyticsPage() {
     return (
@@ -15,6 +16,7 @@ export function AnalyticsPage() {
             <AnalyticsLayout
                 stats={<AnalyticsStats />}
                 charts={<AnalyticsCharts />}
+                actions={<ExportDialog range="all" />}
             />
             <div className="w-full px-6 pb-8">
                 <AnalyticsActivityChart />

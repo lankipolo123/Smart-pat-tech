@@ -5,9 +5,10 @@ type Props = {
     stats: ReactNode
     chart?: ReactNode
     table: ReactNode
+    tableActions?: ReactNode
 }
 
-export function HistoryLayout({ tabs, stats, chart, table }: Props) {
+export function HistoryLayout({ tabs, stats, chart, table, tableActions }: Props) {
     return (
         <div className="flex flex-col gap-8 w-full px-6 pt-4">
             <section aria-label="range-tabs">
@@ -25,6 +26,11 @@ export function HistoryLayout({ tabs, stats, chart, table }: Props) {
             )}
 
             <section aria-label="session-table">
+                {tableActions && (
+                    <div className="flex justify-end mb-3">
+                        {tableActions}
+                    </div>
+                )}
                 {table}
             </section>
         </div>

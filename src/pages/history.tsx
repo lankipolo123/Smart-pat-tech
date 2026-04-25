@@ -16,16 +16,12 @@ export function HistoryPage() {
 
     return (
         <PageContent>
-            <div className="flex items-start justify-between">
-                <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
-                <div className="pt-1">
-                    <ExportDialog range={range} />
-                </div>
-            </div>
+            <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
             <HistoryLayout
                 tabs={<RangeTabs range={range} onRangeChange={setRange} />}
                 stats={<HistoryStats range={range} />}
                 table={<HistoryTable range={range} />}
+                tableActions={<ExportDialog range={range} />}
             />
         </PageContent>
     )
