@@ -8,6 +8,7 @@ import { RangeTabs } from "@/components/range-tabs"
 import { HistoryStats } from "@/components/history-stats"
 import { HistoryChart } from "@/components/history-chart"
 import { HistoryTable } from "@/components/history-table"
+import { ExportDialog } from "@/components/export-dialog"
 
 import { type ParkingRange } from "@/configs/parking-range.config"
 
@@ -16,7 +17,12 @@ export function HistoryPage() {
 
     return (
         <PageContent>
-            <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
+            <div className="flex items-start justify-between">
+                <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
+                <div className="pt-1">
+                    <ExportDialog range={range} />
+                </div>
+            </div>
             <HistoryLayout
                 tabs={<RangeTabs range={range} onRangeChange={setRange} />}
                 stats={<HistoryStats range={range} />}
