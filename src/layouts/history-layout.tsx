@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 type Props = {
     tabs: ReactNode
     stats: ReactNode
-    chart: ReactNode
+    chart?: ReactNode
     table: ReactNode
 }
 
