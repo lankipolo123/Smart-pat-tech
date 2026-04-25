@@ -1,6 +1,6 @@
 import { Car, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { type ParkingSlot } from "@/mocks/parking-slots.data"
+import { type ParkingSlot } from "@/services/parking"
 
 type Props = {
     slot: ParkingSlot

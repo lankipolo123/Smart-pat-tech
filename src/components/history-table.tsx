@@ -1,36 +1,27 @@
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { parkingHistoryData, type SessionRecord } from "@/mocks/parking-history.data"
+import { fetchSessions, type SessionRecord } from "@/services/parking"
 import { type ParkingRange } from "@/configs/parking-range.config"
 
-type Props = {
-    range: ParkingRange
-}
+type Props = { range: ParkingRange }
 
 function formatDuration(min: number | null) {
     if (min === null) return "—"
     const h = Math.floor(min / 60)
     const m = min % 60
-    if (h > 0) return `${h}h ${m}m`
-    return `${m}m`
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
 function StatusBadge({ session }: { session: SessionRecord }) {
-    if (session.exit === null) {
-        return (
-            <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
-                Active
-            </span>
-        )
-    }
-    return (
-        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            Done
-        </span>
-    )
+    if (session.exit === null)
+        return <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">Active</span>
+    return <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Done</span>
 }
 
 export function HistoryTable({ range }: Props) {
-    const { sessions } = parkingHistoryData[range]
+    const [sessions, setSessions] = useState<SessionRecord[]>([])
+
+    useEffect(() => { fetchSessions(range).then(setSessions) }, [range])
 
     return (
         <Card>
@@ -59,26 +50,17 @@ export function HistoryTable({ range }: Props) {
                                         No sessions recorded for this period.
                                     </td>
                                 </tr>
-                            ) : (
-                                sessions.map((s, i) => (
-                                    <tr
-                                        key={s.id}
-                                        className={`border-b transition-colors hover:bg-muted/30 ${i % 2 === 0 ? "" : "bg-muted/10"}`}
-                                    >
-                                        <td className="px-4 py-3 font-medium">{s.slot}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{s.plate}</td>
-                                        <td className="px-4 py-3">{s.entry}</td>
-                                        <td className="px-4 py-3">{s.exit ?? "—"}</td>
-                                        <td className="px-4 py-3">{formatDuration(s.durationMin)}</td>
-                                        <td className="px-4 py-3 font-medium text-primary">
-                                            {s.bill !== null ? `₱${s.bill.toFixed(2)}` : "—"}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <StatusBadge session={s} />
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                            ) : sessions.map((s, i) => (
+                                <tr key={s.id} className={`border-b transition-colors hover:bg-muted/30 ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
+                                    <td className="px-4 py-3 font-medium">{s.slot}</td>
+                                    <td className="px-4 py-3 text-muted-foreground">{s.plate}</td>
+                                    <td className="px-4 py-3">{s.entry}</td>
+                                    <td className="px-4 py-3">{s.exit ?? "—"}</td>
+                                    <td className="px-4 py-3">{formatDuration(s.durationMin)}</td>
+                                    <td className="px-4 py-3 font-medium text-primary">{s.bill !== null ? `₱${s.bill.toFixed(2)}` : "—"}</td>
+                                    <td className="px-4 py-3"><StatusBadge session={s} /></td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>

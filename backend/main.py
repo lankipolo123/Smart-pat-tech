@@ -16,9 +16,14 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 
 from services.auth import init_db, register, login
 from services.camera_stream import CameraStream
+from services.parking import (
+    init_parking_db, get_slots, get_sessions, get_stats,
+    get_analytics_stats, get_revenue_data, get_vehicle_data, get_activity_data,
+)
 from services.config import RTSP_URLS as _CONFIGURED_RTSP_URLS
 
 init_db()
+init_parking_db()
 
 app = FastAPI()
 
@@ -332,6 +337,36 @@ def video():
         _stream(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
+
+
+# ── parking & analytics endpoints ────────────────────────────────────────────
+@app.get("/parking/slots")
+def api_parking_slots():
+    return get_slots()
+
+@app.get("/parking/sessions")
+def api_parking_sessions(range: str = "today"):
+    return get_sessions(range)
+
+@app.get("/parking/stats")
+def api_parking_stats(range: str = "today"):
+    return get_stats(range)
+
+@app.get("/analytics/stats")
+def api_analytics_stats():
+    return get_analytics_stats()
+
+@app.get("/analytics/revenue")
+def api_analytics_revenue():
+    return get_revenue_data()
+
+@app.get("/analytics/vehicles")
+def api_analytics_vehicles():
+    return get_vehicle_data()
+
+@app.get("/analytics/activity")
+def api_analytics_activity():
+    return get_activity_data()
 
 
 # ── SPA fallback — must be last ───────────────────────────────────────────────
