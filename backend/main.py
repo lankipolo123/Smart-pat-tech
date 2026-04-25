@@ -190,8 +190,12 @@ def _inference_loop():
             latest_frame = buf.tobytes()
 
 
-# ── start with webcam on launch ───────────────────────────────────────────────
-open_source(_CONFIGURED_RTSP_URLS[0] if _CONFIGURED_RTSP_URLS else 0)
+# ── start camera in background so server starts immediately ───────────────────
+def _start_camera():
+    source = _CONFIGURED_RTSP_URLS[0] if _CONFIGURED_RTSP_URLS else 0
+    open_source(source)
+
+threading.Thread(target=_start_camera, daemon=True).start()
 
 
 # ── auth endpoints ────────────────────────────────────────────────────────────
