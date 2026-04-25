@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { AuthCard } from "@/components/auth-card"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -7,16 +8,26 @@ type Props = {
     onSubmit: (name: string, email: string, password: string) => void
     onLogin?: () => void
     error?: string
+    loading?: boolean
     className?: string
 }
 
-export function SignUpForm({ onSubmit, onLogin, error, className }: Props) {
+export function SignUpForm({ onSubmit, onLogin, error, loading, className }: Props) {
+    const [passwordError, setPasswordError] = useState("")
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const form = e.currentTarget
         const name = (form.elements.namedItem("name") as HTMLInputElement).value
         const email = (form.elements.namedItem("email") as HTMLInputElement).value
         const password = (form.elements.namedItem("password") as HTMLInputElement).value
+        const confirmPassword = (form.elements.namedItem("confirmPassword") as HTMLInputElement).value
+
+        if (password !== confirmPassword) {
+            setPasswordError("Passwords do not match")
+            return
+        }
+        setPasswordError("")
         onSubmit(name, email, password)
     }
 
@@ -39,30 +50,33 @@ export function SignUpForm({ onSubmit, onLogin, error, className }: Props) {
                 <FieldGroup>
                     <Field>
                         <FieldLabel>Full name</FieldLabel>
-                        <Input name="name" type="text" placeholder="Juan dela Cruz" required />
+                        <Input name="name" type="text" placeholder="Juan dela Cruz" required disabled={loading} />
                     </Field>
 
                     <Field>
                         <FieldLabel>Email</FieldLabel>
-                        <Input name="email" type="email" placeholder="you@example.com" required />
+                        <Input name="email" type="email" placeholder="you@example.com" required disabled={loading} />
                     </Field>
 
                     <Field>
                         <FieldLabel>Password</FieldLabel>
-                        <Input name="password" type="password" required />
+                        <Input name="password" type="password" required disabled={loading} />
                     </Field>
 
                     <Field>
                         <FieldLabel>Confirm password</FieldLabel>
-                        <Input name="confirmPassword" type="password" required />
+                        <Input name="confirmPassword" type="password" required disabled={loading} />
                     </Field>
 
                     <Field>
-                        <Button type="submit" className="w-full">Create account</Button>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? "Creating account…" : "Create account"}
+                        </Button>
                     </Field>
                 </FieldGroup>
             </form>
 
+            {passwordError && <p className="text-sm text-destructive text-center">{passwordError}</p>}
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
             {onLogin && (
@@ -71,6 +85,7 @@ export function SignUpForm({ onSubmit, onLogin, error, className }: Props) {
                     <button
                         type="button"
                         onClick={onLogin}
+                        disabled={loading}
                         className="text-primary font-medium underline-offset-4 hover:underline cursor-pointer"
                     >
                         Log in

@@ -9,54 +9,59 @@ import { CCTVPage } from "@/pages/cctv"
 import { SettingsPage } from "@/pages/settings"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { loginUser, registerUser, saveSession, loadSession, clearSession } from "@/services/auth"
 
-const API = "http://localhost:8000"
+type SessionUser = { token: string; name: string; email: string }
 
 function App() {
-  const [token, setToken] = useState<string | null>(null)
+  const [session, setSession] = useState<SessionUser | null>(() => loadSession())
   const [authPage, setAuthPage] = useState<"login" | "signup">("login")
   const [active, setActive] = useState("dashboard")
   const [authError, setAuthError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const handleLogin = async (email: string, password: string) => {
     setAuthError("")
+    setLoading(true)
     try {
-      const res = await fetch(`${API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-      if (!res.ok) { setAuthError("Invalid email or password"); return }
-      const data = await res.json()
-      setToken(data.access_token)
-    } catch {
-      setAuthError("Could not reach server")
+      const data = await loginUser(email, password)
+      saveSession(data.access_token, data.name, data.email)
+      setSession({ token: data.access_token, name: data.name, email: data.email })
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Could not reach server")
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleSignUp = async (name: string, email: string, password: string) => {
     setAuthError("")
+    setLoading(true)
     try {
-      const res = await fetch(`${API}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      })
-      if (!res.ok) { setAuthError("Email already registered"); return }
-      const data = await res.json()
-      setToken(data.access_token)
-    } catch {
-      setAuthError("Could not reach server")
+      const data = await registerUser(name, email, password)
+      saveSession(data.access_token, data.name, data.email)
+      setSession({ token: data.access_token, name: data.name, email: data.email })
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Could not reach server")
+    } finally {
+      setLoading(false)
     }
   }
 
-  if (!token) {
+  const handleLogout = () => {
+    clearSession()
+    setSession(null)
+    setAuthPage("login")
+  }
+
+  if (!session) {
     if (authPage === "signup") {
       return (
         <SignUpPage
           onSignUp={handleSignUp}
           onLogin={() => { setAuthError(""); setAuthPage("login") }}
           error={authError}
+          loading={loading}
         />
       )
     }
@@ -65,6 +70,7 @@ function App() {
         onLogin={handleLogin}
         onSignUp={() => { setAuthError(""); setAuthPage("signup") }}
         error={authError}
+        loading={loading}
       />
     )
   }
@@ -85,10 +91,7 @@ function App() {
       <AppSidebar
         active={active}
         onNavigate={setActive}
-        onLogout={() => {
-          setToken(null)
-          setAuthPage("login")
-        }}
+        onLogout={handleLogout}
       />
       <div className="flex-1 min-w-0 overflow-y-auto">
         {renderPage()}

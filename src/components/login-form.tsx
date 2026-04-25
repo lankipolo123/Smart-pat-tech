@@ -7,10 +7,11 @@ type Props = {
     onSubmit: (email: string, password: string) => void
     onSignUp?: () => void
     error?: string
+    loading?: boolean
     className?: string
 }
 
-export function LoginForm({ onSubmit, onSignUp, error, className }: Props) {
+export function LoginForm({ onSubmit, onSignUp, error, loading, className }: Props) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const form = e.currentTarget
@@ -30,16 +31,18 @@ export function LoginForm({ onSubmit, onSignUp, error, className }: Props) {
                 <FieldGroup>
                     <Field>
                         <FieldLabel>Email</FieldLabel>
-                        <Input name="email" type="email" required />
+                        <Input name="email" type="email" required disabled={loading} />
                     </Field>
 
                     <Field>
                         <FieldLabel>Password</FieldLabel>
-                        <Input name="password" type="password" required />
+                        <Input name="password" type="password" required disabled={loading} />
                     </Field>
 
                     <Field>
-                        <Button type="submit" className="w-full">Login</Button>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? "Logging in…" : "Login"}
+                        </Button>
                     </Field>
                 </FieldGroup>
             </form>
@@ -52,6 +55,7 @@ export function LoginForm({ onSubmit, onSignUp, error, className }: Props) {
                     <button
                         type="button"
                         onClick={onSignUp}
+                        disabled={loading}
                         className="text-primary font-medium underline-offset-4 hover:underline cursor-pointer"
                     >
                         Sign up
