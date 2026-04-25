@@ -6,6 +6,5 @@ python-multipart
 numpy
 deep-sort-realtime
 torch
-psycopg2-binary
 python-jose[cryptography]
 bcrypt
