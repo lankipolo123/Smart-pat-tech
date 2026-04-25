@@ -32,7 +32,7 @@ export function SignUpForm({ onSubmit, onLogin, error, loading, className }: Pro
     }
 
     return (
-        <AuthCard className={className}>
+        <AuthCard className={`${className ?? ""} !p-7`}>
             <div className="flex justify-center">
                 <img
                     src="https://i.imgur.com/xDSUCZY_d.webp?maxwidth=760&fidelity=grand"

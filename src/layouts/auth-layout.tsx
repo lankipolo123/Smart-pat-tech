@@ -37,7 +37,7 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
 
             {/* FORM AREA */}
             <div className="relative z-10 flex flex-1 items-center justify-center">
-                <div className="w-full max-w-xs">
+                <div className={`w-full ${isSignup ? "max-w-sm" : "max-w-xs"}`}>
                     {children}
                 </div>
             </div>
