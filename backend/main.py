@@ -15,6 +15,7 @@ from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
 from services.auth import init_db, register, login
+from services.camera_stream import CameraStream
 
 init_db()
 
@@ -57,32 +58,48 @@ latest_frame: bytes | None = None
 frame_lock    = threading.Lock()
 cap_lock      = threading.Lock()
 cap: cv2.VideoCapture | None = None
+camera_stream: CameraStream | None = None
 _running      = False
 _loop_source  = False   # True only for uploaded MP4 files
 
 
 def open_source(source):
-    """Switch capture source: 0=webcam, file path, or rtsp/http URL."""
-    global cap, tracker, _running, _loop_source
+    """Switch capture source: webcam index, file path, or RTSP/HTTP URL."""
+    global cap, camera_stream, tracker, _running, _loop_source
 
-    _loop_source = isinstance(source, str) and not any(
+    is_url = isinstance(source, str) and any(
         source.startswith(p) for p in ("rtsp://", "rtmp://", "http://", "https://")
     )
 
-    with cap_lock:
-        if cap:
-            cap.release()
+    tracker = make_tracker()
 
-        new_cap = cv2.VideoCapture(source)
-        new_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)   # minimal latency
-
-        if source == 0:                             # webcam tweaks
-            new_cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-            new_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            new_cap.set(cv2.CAP_PROP_FPS,          30)
-
-        cap = new_cap
-        tracker = make_tracker()                   # fresh tracker on source switch
+    if is_url:
+        # Use CameraStream for proper RTSP transport negotiation + reconnection
+        with cap_lock:
+            if cap:
+                cap.release()
+                cap = None
+            if camera_stream:
+                camera_stream.close()
+            camera_stream = CameraStream(rtsp_urls=[source])
+            camera_stream.open()
+        _loop_source = False
+    else:
+        # Webcam index or local file — use raw VideoCapture
+        with cap_lock:
+            if camera_stream:
+                camera_stream.close()
+                camera_stream = None
+            if cap:
+                cap.release()
+            new_cap = cv2.VideoCapture(source)
+            new_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            if source == 0:
+                new_cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+                new_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                new_cap.set(cv2.CAP_PROP_FPS,          30)
+            cap = new_cap
+        _loop_source = isinstance(source, str)   # True for file paths
 
     if not _running:
         _running = True
@@ -99,18 +116,19 @@ def _inference_loop():
 
     while True:
         with cap_lock:
-            if cap is None or not cap.isOpened():
+            if camera_stream is not None:
+                # RTSP path — CameraStream always returns a frame (real or fallback)
+                frame = camera_stream.read()
+            elif cap is None or not cap.isOpened():
                 time.sleep(0.05)
                 continue
-            ret, frame = cap.read()
-
-        if not ret:
-            if _loop_source:
-                with cap_lock:
-                    if cap:
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # loop uploaded file
-            time.sleep(0.01)
-            continue
+            else:
+                ret, frame = cap.read()
+                if not ret:
+                    if _loop_source:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    time.sleep(0.01)
+                    continue
 
         # ── resize display frame to max 640 wide ──────────────────────────
         h, w = frame.shape[:2]
