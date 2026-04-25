@@ -22,7 +22,7 @@ export function AnalyticsCharts() {
 
                     <TabsContent value="revenue">
                         <ChartContainer
-                            config={{ revenue: { label: "Revenue (₱)", color: "var(--chart-2)" } }}
+                            config={{ revenue: { label: "Revenue (₱)", color: "var(--chart-3)" } }}
                             className="h-[260px] w-full"
                         >
                             <LineChart data={revenueData}>
@@ -44,7 +44,7 @@ export function AnalyticsCharts() {
                                 <ChartTooltip content={<ChartTooltipContent />} />
                                 <Line
                                     dataKey="revenue"
-                                    stroke="var(--chart-2)"
+                                    stroke="var(--chart-3)"
                                     strokeWidth={2}
                                     dot={{ r: 4 }}
                                     activeDot={{ r: 6 }}

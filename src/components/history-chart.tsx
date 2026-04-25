@@ -28,7 +28,7 @@ export function HistoryChart({ range }: Props) {
             </CardHeader>
             <CardContent>
                 <ChartContainer
-                    config={{ vehicles: { label: "Vehicles", color: "var(--chart-2)" } }}
+                    config={{ vehicles: { label: "Vehicles", color: "var(--chart-4)" } }}
                     className="h-[250px] w-full"
                 >
                     <BarChart data={chartData}>
@@ -43,7 +43,7 @@ export function HistoryChart({ range }: Props) {
                         />
                         <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 11 }} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="vehicles" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="vehicles" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ChartContainer>
             </CardContent>

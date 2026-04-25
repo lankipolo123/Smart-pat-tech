@@ -74,6 +74,13 @@
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #2596be;
+
+  /* CHART COLORS */
+  --chart-1: #2596be;
+  --chart-2: #a33738;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #8b5cf6;
 }
 
 .dark {
@@ -104,6 +111,13 @@
   --border: #334155;
   --input: #334155;
   --ring: #2596be;
+
+  /* CHART COLORS */
+  --chart-1: #38bdf8;
+  --chart-2: #f87171;
+  --chart-3: #4ade80;
+  --chart-4: #fbbf24;
+  --chart-5: #a78bfa;
 }
 
 /* BASE STYLES */
