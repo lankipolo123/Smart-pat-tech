@@ -10,6 +10,7 @@ import { SettingsPage } from "@/pages/settings"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { loginUser, registerUser, saveSession, loadSession, clearSession } from "@/services/auth"
+import { AuthProvider } from "@/contexts/auth-context"
 
 type SessionUser = { token: string; name: string; email: string }
 
@@ -87,16 +88,18 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <AppSidebar
-        active={active}
-        onNavigate={setActive}
-        onLogout={handleLogout}
-      />
-      <div className="flex-1 min-w-0 overflow-y-auto">
-        {renderPage()}
+    <AuthProvider user={session}>
+      <div className="flex h-screen w-full overflow-hidden">
+        <AppSidebar
+          active={active}
+          onNavigate={setActive}
+          onLogout={handleLogout}
+        />
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          {renderPage()}
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   )
 }
 

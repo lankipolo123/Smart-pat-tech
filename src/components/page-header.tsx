@@ -3,26 +3,17 @@
 import { useEffect, useState } from "react"
 import { pageHeaderConfig as cfg } from "@/configs/page-header-configs"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { useAuth } from "@/contexts/auth-context"
 
 type Props = {
     title: string
     description?: string
-    user?: {
-        name: string
-        role: string
-        avatar?: string
-    }
 }
 
-export function PageHeader({ title, description, user }: Props) {
+export function PageHeader({ title, description }: Props) {
+    const { name, email } = useAuth()
     const [time, setTime] = useState("")
     const [date, setDate] = useState("")
-
-    const safeUser = user ?? {
-        name: "No User",
-        role: "—",
-        avatar: "",
-    }
 
     const DateIcon = cfg.icons.dateIcon
     const TimeIcon = cfg.icons.timeIcon
@@ -30,22 +21,12 @@ export function PageHeader({ title, description, user }: Props) {
     useEffect(() => {
         const update = () => {
             const now = new Date()
-
-            setTime(
-                now.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                })
-            )
-
-            setDate(
-                now.toLocaleDateString(cfg.date.locale, {
-                    month: cfg.date.format.month,
-                    day: cfg.date.format.day,
-                })
-            )
+            setTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+            setDate(now.toLocaleDateString(cfg.date.locale, {
+                month: cfg.date.format.month,
+                day: cfg.date.format.day,
+            }))
         }
-
         update()
         const interval = setInterval(update, 1000)
         return () => clearInterval(interval)
@@ -84,23 +65,14 @@ export function PageHeader({ title, description, user }: Props) {
 
                     {/* AVATAR */}
                     <Avatar className="size-10">
-                        <AvatarImage src={safeUser.avatar} />
-                        <AvatarFallback>
-                            {safeUser.name?.charAt(0)}
-                        </AvatarFallback>
+                        <AvatarImage src="" />
+                        <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
 
                     {/* USER INFO */}
                     <div className="leading-tight">
-
-                        <div className="text-sm font-medium text-primary">
-                            {safeUser.name}
-                        </div>
-
-                        <div className="text-xs text-muted-foreground">
-                            {safeUser.role}
-                        </div>
-
+                        <div className="text-sm font-medium text-primary">{name}</div>
+                        <div className="text-xs text-muted-foreground">{email}</div>
                     </div>
 
                 </div>

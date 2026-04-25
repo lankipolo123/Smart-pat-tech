@@ -7,10 +7,15 @@ import { ProfileHeader } from "@/components/profile-header"
 import { PersonalInfoForm } from "@/components/personal-info-form"
 import { ManageAccountCard } from "@/components/manage-account-card"
 
-import { mockUser } from "@/configs/user.config"
+import { useAuth } from "@/contexts/auth-context"
 import { accountActions } from "@/configs/account-actions"
 
 export function SettingsPage() {
+    const { name, email } = useAuth()
+
+    const [firstName, ...rest] = name.split(" ")
+    const lastName = rest.join(" ")
+
     return (
         <PageContent>
             <PageHeader
@@ -18,18 +23,24 @@ export function SettingsPage() {
                 description="Manage your account"
             />
             <SettingsLayout
-                one={<ProfileHeader {...mockUser} />}
+                one={
+                    <ProfileHeader
+                        displayName={name}
+                        role="User"
+                        email={email}
+                        status="active"
+                    />
+                }
                 two={
-                    <ManageAccountCard userEmail={mockUser.email}
+                    <ManageAccountCard
+                        userEmail={email}
                         {...accountActions}
                     />
                 }
                 three={
                     <PersonalInfoForm
-                        userInfo={mockUser}
-                        onUpdate={(data) =>
-                            console.log("UPDATE:", data)
-                        }
+                        userInfo={{ firstName, lastName, email }}
+                        onUpdate={(data) => console.log("UPDATE:", data)}
                     />
                 }
             />
