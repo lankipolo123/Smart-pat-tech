@@ -2,18 +2,15 @@ import AuthLayout from "@/layouts/auth-layout"
 import { SignUpForm } from "@/components/signup-form"
 
 type Props = {
-    onSignUp: () => void
+    onSignUp: (name: string, email: string, password: string) => void
     onLogin: () => void
+    error?: string
 }
 
-export default function SignUpPage({ onSignUp, onLogin }: Props) {
-    const handleSignUp = (name: string, email: string, password: string) => {
-        if (name && email && password) onSignUp()
-    }
-
+export default function SignUpPage({ onSignUp, onLogin, error }: Props) {
     return (
         <AuthLayout variant="signup">
-            <SignUpForm onSubmit={handleSignUp} onLogin={onLogin} />
+            <SignUpForm onSubmit={onSignUp} onLogin={onLogin} error={error} />
         </AuthLayout>
     )
 }

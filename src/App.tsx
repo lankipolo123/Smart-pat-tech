@@ -10,24 +10,61 @@ import { SettingsPage } from "@/pages/settings"
 
 import { AppSidebar } from "@/components/app-sidebar"
 
+const API = "http://localhost:8000"
+
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
   const [authPage, setAuthPage] = useState<"login" | "signup">("login")
   const [active, setActive] = useState("dashboard")
+  const [authError, setAuthError] = useState("")
 
-  if (!loggedIn) {
+  const handleLogin = async (email: string, password: string) => {
+    setAuthError("")
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      if (!res.ok) { setAuthError("Invalid email or password"); return }
+      const data = await res.json()
+      setToken(data.access_token)
+    } catch {
+      setAuthError("Could not reach server")
+    }
+  }
+
+  const handleSignUp = async (name: string, email: string, password: string) => {
+    setAuthError("")
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      })
+      if (!res.ok) { setAuthError("Email already registered"); return }
+      const data = await res.json()
+      setToken(data.access_token)
+    } catch {
+      setAuthError("Could not reach server")
+    }
+  }
+
+  if (!token) {
     if (authPage === "signup") {
       return (
         <SignUpPage
-          onSignUp={() => setLoggedIn(true)}
-          onLogin={() => setAuthPage("login")}
+          onSignUp={handleSignUp}
+          onLogin={() => { setAuthError(""); setAuthPage("login") }}
+          error={authError}
         />
       )
     }
     return (
       <LoginPage
-        onLogin={() => setLoggedIn(true)}
-        onSignUp={() => setAuthPage("signup")}
+        onLogin={handleLogin}
+        onSignUp={() => { setAuthError(""); setAuthPage("signup") }}
+        error={authError}
       />
     )
   }
@@ -49,7 +86,7 @@ function App() {
         active={active}
         onNavigate={setActive}
         onLogout={() => {
-          setLoggedIn(false)
+          setToken(null)
           setAuthPage("login")
         }}
       />

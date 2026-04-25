@@ -5,14 +5,47 @@ import os
 import threading
 import subprocess
 import torch
+from datetime import datetime, timedelta
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+from jose import jwt, JWTError
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
+
+from database import engine, get_db, Base
+from models import User
+
+Base.metadata.create_all(bind=engine)
+
+SECRET_KEY = "smartpat-secret-key-change-in-prod"
+ALGORITHM  = "HS256"
+TOKEN_DAYS = 7
+
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2  = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+def make_token(user_id: int) -> str:
+    return jwt.encode(
+        {"sub": str(user_id), "exp": datetime.utcnow() + timedelta(days=TOKEN_DAYS)},
+        SECRET_KEY, algorithm=ALGORITHM
+    )
+
+def current_user(token: str = Depends(oauth2), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user = db.query(User).filter(User.id == int(payload["sub"])).first()
+        if not user:
+            raise HTTPException(status_code=401)
+        return user
+    except (JWTError, Exception):
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 app = FastAPI()
 
@@ -164,6 +197,38 @@ def _inference_loop():
 
 # ── start with webcam on launch ───────────────────────────────────────────────
 open_source(0)
+
+
+# ── auth endpoints ────────────────────────────────────────────────────────────
+class RegisterBody(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+@app.post("/auth/register")
+def register(body: RegisterBody, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.email == body.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(name=body.name, email=body.email, hashed_password=pwd_ctx.hash(body.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"access_token": make_token(user.id), "name": user.name, "email": user.email}
+
+@app.post("/auth/login")
+def login(body: LoginBody, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user or not pwd_ctx.verify(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"access_token": make_token(user.id), "name": user.name, "email": user.email}
+
+@app.get("/auth/me")
+def me(user: User = Depends(current_user)):
+    return {"id": user.id, "name": user.name, "email": user.email}
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────

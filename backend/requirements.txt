@@ -6,3 +6,7 @@ python-multipart
 numpy
 deep-sort-realtime
 torch
+sqlalchemy
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]

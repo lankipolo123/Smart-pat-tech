@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input"
 type Props = {
     onSubmit: (email: string, password: string) => void
     onSignUp?: () => void
+    error?: string
     className?: string
 }
 
-export function LoginForm({ onSubmit, onSignUp, className }: Props) {
+export function LoginForm({ onSubmit, onSignUp, error, className }: Props) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const form = e.currentTarget
@@ -42,6 +43,8 @@ export function LoginForm({ onSubmit, onSignUp, className }: Props) {
                     </Field>
                 </FieldGroup>
             </form>
+
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
             {onSignUp && (
                 <p className="text-center text-sm text-muted-foreground">
