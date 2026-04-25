@@ -5,9 +5,10 @@ import os
 import threading
 import subprocess
 import torch
+from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
@@ -22,12 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-def home():
-    return {"open": "http://localhost:8000/static/index.html"}
+# ── serve built React app if dist/ exists ─────────────────────────────────────
+DIST = Path(__file__).parent.parent / "dist"
+if DIST.exists():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
 # ── model ────────────────────────────────────────────────────────────────────
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -285,3 +284,13 @@ def video():
         _stream(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
+
+
+# ── SPA fallback — must be last ───────────────────────────────────────────────
+@app.get("/")
+@app.get("/{full_path:path}")
+def serve_spa(full_path: str = ""):
+    index = DIST / "index.html"
+    if index.exists():
+        return FileResponse(index)
+    return {"status": "backend running", "ui": "run `npm run build` in the project root"}
