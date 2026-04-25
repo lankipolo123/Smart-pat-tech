@@ -16,6 +16,7 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 
 from services.auth import init_db, register, login
 from services.camera_stream import CameraStream
+from services.config import RTSP_URLS as _CONFIGURED_RTSP_URLS
 
 init_db()
 
@@ -185,7 +186,7 @@ def _inference_loop():
 
 
 # ── start with webcam on launch ───────────────────────────────────────────────
-open_source(0)
+open_source(_CONFIGURED_RTSP_URLS[0] if _CONFIGURED_RTSP_URLS else 0)
 
 
 # ── auth endpoints ────────────────────────────────────────────────────────────
