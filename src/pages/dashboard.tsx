@@ -6,50 +6,12 @@ import { CCTVFeedCard } from "@/components/cctv-feed-card"
 import { ActiveAlerts } from "@/components/active-alerts"
 import { ParkingSummary } from "@/components/parking-summary"
 import { ParkingSlotsGrid } from "@/components/parking-slots-grid"
-
-const STREAM_URL   = "http://localhost:8000/video"
-const UPLOAD_URL   = "http://localhost:8000/upload"
-const WEBCAM_URL   = "http://localhost:8000/webcam"
-const CONNECT_URL  = "http://localhost:8000/connect"
-const CAMERAS_URL  = "http://localhost:8000/cameras"
+import { STREAM_URL } from "@/services/camera"
 
 export function DashboardPage() {
     const [streamSrc, setStreamSrc] = useState(`${STREAM_URL}?t=${Date.now()}`)
 
     const handleRefresh = useCallback(() => {
-        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
-    }, [])
-
-    const handleUpload = useCallback(async (file: File) => {
-        const form = new FormData()
-        form.append("file", file, file.name)
-        try {
-            await fetch(UPLOAD_URL, { method: "POST", body: form })
-        } catch {
-            // backend not running
-        }
-        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
-    }, [])
-
-    const handleWebcam = useCallback(async (index: number) => {
-        try {
-            await fetch(WEBCAM_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ index }),
-            })
-        } catch {}
-        setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
-    }, [])
-
-    const handleConnect = useCallback(async (url: string) => {
-        try {
-            await fetch(CONNECT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url }),
-            })
-        } catch {}
         setStreamSrc(`${STREAM_URL}?t=${Date.now()}`)
     }, [])
 
@@ -62,15 +24,8 @@ export function DashboardPage() {
             <DashboardContentLayout
                 feed={
                     <CCTVFeedCard
-                        size="lg"
                         streamUrl={streamSrc}
-                        detections={0}
-                        parkingSlots={0}
                         onRefresh={handleRefresh}
-                        onUpload={handleUpload}
-                        onWebcam={handleWebcam}
-                        onConnect={handleConnect}
-                        camerasUrl={CAMERAS_URL}
                     />
                 }
                 alerts={<ActiveAlerts />}
