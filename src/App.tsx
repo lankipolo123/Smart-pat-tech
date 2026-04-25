@@ -11,8 +11,18 @@ import { SettingsPage } from "@/pages/settings"
 import { AppSidebar } from "@/components/app-sidebar"
 import { loginUser, registerUser, saveSession, loadSession, clearSession } from "@/services/auth"
 import { AuthProvider } from "@/contexts/auth-context"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 type SessionUser = { token: string; name: string; email: string }
+type AuthDialog = "created" | "exists" | null
 
 function App() {
   const [session, setSession] = useState<SessionUser | null>(() => loadSession())
@@ -20,6 +30,8 @@ function App() {
   const [active, setActive] = useState("dashboard")
   const [authError, setAuthError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [dialog, setDialog] = useState<AuthDialog>(null)
+  const [pendingSession, setPendingSession] = useState<SessionUser | null>(null)
 
   const handleLogin = async (email: string, password: string) => {
     setAuthError("")
@@ -41,9 +53,15 @@ function App() {
     try {
       const data = await registerUser(name, email, password)
       saveSession(data.access_token, data.name, data.email)
-      setSession({ token: data.access_token, name: data.name, email: data.email })
+      setPendingSession({ token: data.access_token, name: data.name, email: data.email })
+      setDialog("created")
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "Could not reach server")
+      const msg = err instanceof Error ? err.message : "Could not reach server"
+      if (msg === "Email already registered") {
+        setDialog("exists")
+      } else {
+        setAuthError(msg)
+      }
     } finally {
       setLoading(false)
     }
@@ -55,15 +73,59 @@ function App() {
     setAuthPage("login")
   }
 
+  const handleCreatedContinue = () => {
+    setDialog(null)
+    if (pendingSession) setSession(pendingSession)
+  }
+
+  const handleExistsLogin = () => {
+    setDialog(null)
+    setAuthError("")
+    setAuthPage("login")
+  }
+
   if (!session) {
     if (authPage === "signup") {
       return (
-        <SignUpPage
-          onSignUp={handleSignUp}
-          onLogin={() => { setAuthError(""); setAuthPage("login") }}
-          error={authError}
-          loading={loading}
-        />
+        <>
+          <SignUpPage
+            onSignUp={handleSignUp}
+            onLogin={() => { setAuthError(""); setAuthPage("login") }}
+            error={authError}
+            loading={loading}
+          />
+
+          {/* Account created */}
+          <Dialog open={dialog === "created"} onOpenChange={() => {}}>
+            <DialogContent showCloseButton={false}>
+              <DialogHeader>
+                <DialogTitle>Account created!</DialogTitle>
+                <DialogDescription>
+                  Welcome, {pendingSession?.name}. Your account has been set up successfully.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button onClick={handleCreatedContinue}>Get started</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Email already exists */}
+          <Dialog open={dialog === "exists"} onOpenChange={() => {}}>
+            <DialogContent showCloseButton={false}>
+              <DialogHeader>
+                <DialogTitle>Account already exists</DialogTitle>
+                <DialogDescription>
+                  An account with that email is already registered. Would you like to log in instead?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
+                <Button onClick={handleExistsLogin}>Go to login</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       )
     }
     return (
