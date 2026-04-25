@@ -3,7 +3,6 @@ import { useState } from "react"
 import LoginPage from "@/pages/login"
 import SignUpPage from "@/pages/signup"
 import { DashboardPage } from "@/pages/dashboard"
-import { HistoryPage } from "@/pages/history"
 import { AnalyticsPage } from "@/pages/analytics"
 import { CCTVPage } from "@/pages/cctv"
 import { SettingsPage } from "@/pages/settings"
@@ -156,7 +155,6 @@ function App() {
   const renderPage = () => {
     switch (active) {
       case "dashboard": return <DashboardPage />
-      case "history": return <HistoryPage />
       case "analytics": return <AnalyticsPage />
       case "cctv": return <CCTVPage />
       case "settings": return <SettingsPage />
