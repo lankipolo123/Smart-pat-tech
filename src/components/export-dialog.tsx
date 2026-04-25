@@ -186,7 +186,7 @@ export function ExportDialog({ range }: Props) {
                                             </tr>
                                         ) : (
                                             preview.map((s, i) => {
-                                                const status = s.exit === null ? "Active" : "Done"
+                                                const status = s.exit === null ? "Ongoing" : "Done"
                                                 return (
                                                     <tr key={s.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/10"}>
                                                         <td className="px-3 py-1.5 font-mono">{sessionLabel(s.id)}</td>
@@ -197,7 +197,7 @@ export function ExportDialog({ range }: Props) {
                                                         <td className="px-3 py-1.5">{formatFee(s.bill)}</td>
                                                         <td className="px-3 py-1.5">
                                                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                                                status === "Active"
+                                                                status === "Ongoing"
                                                                     ? "bg-emerald-100 text-emerald-700"
                                                                     : "bg-gray-100 text-gray-600"
                                                             }`}>

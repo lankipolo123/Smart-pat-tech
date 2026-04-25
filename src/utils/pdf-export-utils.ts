@@ -65,7 +65,7 @@ async function buildDoc(sessions: SessionRecord[], range: string, withLogo = tru
 
     const dataRows = sessions.map((s, idx) => {
         const bg = idx % 2 === 0 ? "#F9FAFB" : "#FFFFFF"
-        const status = s.exit === null ? "Active" : "Done"
+        const status = s.exit === null ? "Ongoing" : "Done"
         return [
             sessionLabel(s.id), s.slot,
             formatDate(s.entry),

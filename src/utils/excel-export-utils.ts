@@ -49,7 +49,7 @@ export async function exportSessionsToExcel(sessions: SessionRecord[], range: st
     })
 
     sessions.forEach((s, idx) => {
-        const status = s.exit === null ? "Active" : "Done"
+        const status = s.exit === null ? "Ongoing" : "Done"
         const row = ws.addRow([
             sessionLabel(s.id),
             s.slot,

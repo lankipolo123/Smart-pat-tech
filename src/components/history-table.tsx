@@ -34,7 +34,7 @@ function formatDuration(min: number | null) {
 
 function StatusBadge({ session }: { session: SessionRecord }) {
     if (session.exit === null)
-        return <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">Active</span>
+        return <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">Ongoing</span>
     return <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Done</span>
 }
 

@@ -60,7 +60,7 @@ export function convertToCSV(sessions: SessionRecord[]): string {
             escapeCSV(s.exit ? formatDate(s.exit) : "—"),
             escapeCSV(formatDuration(s.durationMin)),
             escapeCSV(formatFee(s.bill)),
-            escapeCSV(s.exit === null ? "Active" : "Done"),
+            escapeCSV(s.exit === null ? "Ongoing" : "Done"),
         ].join(","))
     }
 
