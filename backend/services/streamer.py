@@ -1,9 +1,4 @@
-"""WebSocket frame streamer.
-backend\services\streamer.py
 
-This module exposes a WebSocket endpoint and streams processed video frames.
-Separated from capture and detection to keep the backend modular.
-"""
 
 import asyncio
 import logging

@@ -1,6 +1,4 @@
-"""Parking slots, sessions, and analytics DB operations.
-backend\services\parking.py
-"""
+
 
 from datetime import date, timedelta
 from .auth import get_conn

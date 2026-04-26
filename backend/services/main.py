@@ -1,9 +1,4 @@
-"""FastAPI backend entry point.
-backend\main.py
 
-This file wires the capture, detection, and streaming modules together.
-The API is designed to support a React.js dashboard via WebSocket.
-"""
 
 import logging
 from fastapi import FastAPI, WebSocket

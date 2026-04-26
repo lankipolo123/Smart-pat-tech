@@ -10,7 +10,7 @@ type Props = {
 
 export function HistoryLayout({ tabs, stats, chart, table, tableActions }: Props) {
     return (
-        <div className="flex flex-col gap-8 w-full px-6 pt-4">
+        <div className="flex flex-col gap-8 w-full px-6 pt-4 pb-6">
             <section aria-label="range-tabs">
                 {tabs}
             </section>

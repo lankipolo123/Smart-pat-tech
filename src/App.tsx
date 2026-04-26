@@ -5,7 +5,6 @@ import SignUpPage from "@/pages/signup"
 import { DashboardPage } from "@/pages/dashboard"
 import { HistoryPage } from "@/pages/history"
 import { AnalyticsPage } from "@/pages/analytics"
-import { CCTVPage } from "@/pages/cctv"
 import { SettingsPage } from "@/pages/settings"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -85,7 +84,7 @@ function App() {
         )}
 
         {/* Account created */}
-        <Dialog open={dialog === "created"} onOpenChange={() => {}}>
+        <Dialog open={dialog === "created"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>Account created!</DialogTitle>
@@ -102,7 +101,7 @@ function App() {
         </Dialog>
 
         {/* Email already exists */}
-        <Dialog open={dialog === "exists"} onOpenChange={() => {}}>
+        <Dialog open={dialog === "exists"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>Account already exists</DialogTitle>
@@ -118,7 +117,7 @@ function App() {
         </Dialog>
 
         {/* Invalid credentials */}
-        <Dialog open={dialog === "login-invalid"} onOpenChange={() => {}}>
+        <Dialog open={dialog === "login-invalid"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>Invalid credentials</DialogTitle>
@@ -136,7 +135,7 @@ function App() {
         </Dialog>
 
         {/* Server unreachable */}
-        <Dialog open={dialog === "login-server"} onOpenChange={() => {}}>
+        <Dialog open={dialog === "login-server"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>Could not connect</DialogTitle>
@@ -158,7 +157,6 @@ function App() {
       case "dashboard": return <DashboardPage />
       case "history": return <HistoryPage />
       case "analytics": return <AnalyticsPage />
-      case "cctv": return <CCTVPage />
       case "settings": return <SettingsPage />
       default: return <DashboardPage />
     }

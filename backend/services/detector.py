@@ -1,5 +1,5 @@
 """Vehicle detection and parking space monitoring.
-backend\services\detector.py
+backend/services/detector.py
 
 Handles YOLOv8 inference for vehicle detection and evaluates
 which parking slots are occupied based on detection results.
@@ -7,15 +7,12 @@ which parking slots are occupied based on detection results.
 
 import logging
 import numpy as np
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Vehicle class IDs in COCO dataset (used by YOLOv8 default weights)
 VEHICLE_CLASS_IDS = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 
-# Default parking slot regions as normalized (x1, y1, x2, y2) relative to frame size.
-# These are placeholder zones — adjust to match your actual camera layout.
 DEFAULT_PARKING_SLOTS = [
     {"id": "A1", "bbox": [0.05, 0.10, 0.25, 0.45]},
     {"id": "A2", "bbox": [0.28, 0.10, 0.48, 0.45]},
@@ -27,11 +24,10 @@ DEFAULT_PARKING_SLOTS = [
     {"id": "B4", "bbox": [0.74, 0.55, 0.94, 0.90]},
 ]
 
-IOU_THRESHOLD = 0.15  # Minimum IoU to consider a slot occupied
+IOU_THRESHOLD = 0.15
 
 
 def _iou(box_a: List[float], box_b: List[float]) -> float:
-    """Compute Intersection over Union between two boxes [x1, y1, x2, y2]."""
     xa1 = max(box_a[0], box_b[0])
     ya1 = max(box_a[1], box_b[1])
     xa2 = min(box_a[2], box_b[2])
@@ -55,7 +51,7 @@ class YOLODetector:
         self.model_path = model_path
         self._load_model()
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         try:
             from ultralytics import YOLO
             self.model = YOLO(self.model_path)
@@ -66,67 +62,54 @@ class YOLODetector:
             logger.exception("Failed to load YOLO model: %s", exc)
 
     def detect_vehicles(self, frame: np.ndarray) -> List[Dict[str, Any]]:
-        """Run vehicle detection on a frame. Returns list of detection dicts."""
         if self.model is None or frame is None:
             return []
-
         try:
             results = self.model(frame, conf=self.confidence, verbose=False)
-            detections = []
-
+            detections: List[Dict[str, Any]] = []
             for result in results:
                 for box in result.boxes:
                     cls_id = int(box.cls[0])
                     if cls_id not in VEHICLE_CLASS_IDS:
                         continue
-
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     conf = float(box.conf[0])
                     h, w = frame.shape[:2]
-
                     detections.append({
                         "class_id": cls_id,
                         "label": VEHICLE_CLASS_IDS[cls_id],
                         "confidence": round(conf, 3),
                         "bbox": [x1, y1, x2, y2],
-                        # Normalized bbox for slot overlap checks
                         "bbox_norm": [x1 / w, y1 / h, x2 / w, y2 / h],
                     })
-
             return detections
-
         except Exception as exc:
             logger.exception("Detection error: %s", exc)
             return []
 
 
 class ParkingSpaceMonitor:
-    def __init__(self, slots: List[Dict] = None):
-        self.slots = slots or DEFAULT_PARKING_SLOTS
+    def __init__(self, slots: Optional[List[Dict[str, Any]]] = None):
+        self.slots: List[Dict[str, Any]] = slots if slots is not None else DEFAULT_PARKING_SLOTS
 
-    def evaluate(self, detections: List[Dict], frame_shape: tuple) -> List[Dict[str, Any]]:
-        """Check each parking slot against detections and return occupancy states."""
-        slot_states = []
-
+    def evaluate(self, detections: List[Dict[str, Any]], frame_shape: tuple) -> List[Dict[str, Any]]:
+        slot_states: List[Dict[str, Any]] = []
         for slot in self.slots:
-            slot_bbox = slot["bbox"]  # normalized
+            slot_bbox: List[float] = slot["bbox"]
             occupied = False
-            matched_label = None
-
+            matched_label: Optional[str] = None
             for det in detections:
-                det_bbox = det.get("bbox_norm", [])
+                det_bbox: List[float] = det.get("bbox_norm", [])
                 if not det_bbox:
                     continue
                 if _iou(slot_bbox, det_bbox) >= IOU_THRESHOLD:
                     occupied = True
                     matched_label = det.get("label")
                     break
-
             slot_states.append({
                 "id": slot["id"],
                 "status": "occupied" if occupied else "available",
                 "vehicle": matched_label,
                 "bbox": slot_bbox,
             })
-
         return slot_states

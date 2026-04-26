@@ -1,9 +1,4 @@
 
-"""
-backend\services\camera_stream.py
-Camera capture module.
-Handles RTSP streams with TCP/UDP transport fallback and automatic reconnection.
-"""
 
 import logging
 import os

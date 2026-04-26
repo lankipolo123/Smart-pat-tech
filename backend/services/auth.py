@@ -47,10 +47,11 @@ def init_db():
                 last_login      TEXT
             )
         """)
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN last_login TEXT")
-        except Exception:
-            pass
+        for col in ("last_login TEXT", "avatar_url TEXT"):
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            except Exception:
+                pass
 
 
 def _make_token(user_id: int) -> str:
@@ -70,6 +71,8 @@ def register(name: str, email: str, password: str) -> dict:
             (name, email, _hash(password))
         )
         user_id = cur.lastrowid
+        if user_id is None:
+            raise RuntimeError("Failed to create user")
         row = conn.execute(
             "SELECT created_at, last_login FROM users WHERE id = ?", (user_id,)
         ).fetchone()
@@ -104,3 +107,19 @@ def login(email: str, password: str) -> dict:
         "joined_at": row["created_at"],
         "last_login": last_login,
     }
+
+
+def update_avatar(user_id: int, avatar_url: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET avatar_url = ? WHERE id = ?",
+            (avatar_url, user_id)
+        )
+
+
+def get_avatar(user_id: int) -> str | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT avatar_url FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        return row["avatar_url"] if row else None

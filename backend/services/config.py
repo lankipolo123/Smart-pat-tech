@@ -1,7 +1,4 @@
 
-""""
-backend\services\config.py
-"""
 import os
 from urllib.parse import quote
 

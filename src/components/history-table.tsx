@@ -55,7 +55,7 @@ export function HistoryTable({ range }: Props) {
     }, [range])
 
     const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE))
-    const paginated  = sessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    const paginated = sessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
     function go(p: number) {
         if (p < 1 || p > totalPages) return
@@ -78,7 +78,7 @@ export function HistoryTable({ range }: Props) {
             <CardContent className="p-0">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-muted/40 text-xs uppercase tracking-wider">
+                        <TableRow className="text-xs uppercase tracking-wider text-primary">
                             <TableHead className="px-4">Slot</TableHead>
                             <TableHead className="px-4">Entry</TableHead>
                             <TableHead className="px-4">Exit</TableHead>
