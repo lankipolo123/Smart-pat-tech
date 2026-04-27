@@ -6,3 +6,25 @@ uvicorn main:app --reload
 at the terminal also add a new terminal(cmd) 
 and run 
 npm run dev
+
+
+
+//camera
+# ── STEP 1: Open CAM720 > Device > Network infor ──
+# Copy the IP address shown there
+CAMERA_IP=your_camera_ip
+
+# ── STEP 2: Open CAM720 > Device > Security settings ──
+# Copy the Security code shown there
+RTSP_USER=admin
+RTSP_PASSWORD=your_security_code
+
+# ── STEP 3: Build your RTSP URL using the values above ──
+RTSP_URL=rtsp://admin:your_security_code@your_camera_ip:554/live/ch0
+
+# ── STEP 4: Run test.py to confirm the URL works ──
+# In your terminal: python test.py
+# If live/ch0 fails, use the path that shows WORKS instead
+
+# ── STEP 5: Restart the server ──
+# In your terminal: uvicorn main:app --reload
