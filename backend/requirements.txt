@@ -8,3 +8,4 @@ deep-sort-realtime
 torch
 python-jose[cryptography]
 bcrypt
+python-dotenv

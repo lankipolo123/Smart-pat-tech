@@ -5,9 +5,10 @@ type Props = {
     stats: ReactNode
     charts: ReactNode
     actions?: ReactNode
+    activity?: ReactNode
 }
 
-export function AnalyticsLayout({ stats, charts, actions }: Props) {
+export function AnalyticsLayout({ stats, charts, actions, activity }: Props) {
     return (
         <div className="flex flex-col gap-6 w-full px-6 pt-4 pb-8">
             {actions && (
@@ -24,6 +25,12 @@ export function AnalyticsLayout({ stats, charts, actions }: Props) {
             <section aria-label="analytics-charts">
                 {charts}
             </section>
+
+            {activity && (
+                <section aria-label="analytics-activity">
+                    {activity}
+                </section>
+            )}
         </div>
     )
 }

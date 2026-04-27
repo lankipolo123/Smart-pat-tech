@@ -15,14 +15,16 @@ export function HistoryPage() {
     const [range, setRange] = useState<ParkingRange>("today")
 
     return (
-        <PageContent>
+        <>
             <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
-            <HistoryLayout
-                tabs={<RangeTabs range={range} onRangeChange={setRange} />}
-                stats={<HistoryStats range={range} />}
-                table={<HistoryTable range={range} />}
-                tableActions={<ExportDialog range={range} />}
-            />
-        </PageContent>
+            <PageContent>
+                <HistoryLayout
+                    tabs={<RangeTabs range={range} onRangeChange={setRange} />}
+                    stats={<HistoryStats range={range} />}
+                    table={<HistoryTable range={range} />}
+                    tableActions={<ExportDialog range={range} />}
+                />
+            </PageContent>
+        </>
     )
 }

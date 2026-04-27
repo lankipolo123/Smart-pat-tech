@@ -19,13 +19,13 @@ type Props = {
 const PREVIEW_ROWS = 5
 
 export function ExportDialog({ range }: Props) {
-    const [open, setOpen]               = useState(false)
-    const [format, setFormat]           = useState<Format>("pdf")
-    const [loading, setLoading]         = useState(false)
-    const [sessions, setSessions]       = useState<SessionRecord[]>([])
-    const [fetching, setFetching]       = useState(false)
-    const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
-    const [pdfLoading, setPdfLoading]   = useState(false)
+    const [open, setOpen] = useState(false)
+    const [format, setFormat] = useState<Format>("pdf")
+    const [loading, setLoading] = useState(false)
+    const [sessions, setSessions] = useState<SessionRecord[]>([])
+    const [fetching, setFetching] = useState(false)
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [pdfLoading, setPdfLoading] = useState(false)
     const prevUrlRef = useRef<string | null>(null)
 
     // Fetch sessions whenever dialog opens
@@ -94,9 +94,9 @@ export function ExportDialog({ range }: Props) {
     }
 
     const tabs: { key: Format; label: string; icon: React.ReactNode }[] = [
-        { key: "pdf",   label: "PDF",   icon: <FileTextIcon        className="h-4 w-4" /> },
+        { key: "pdf", label: "PDF", icon: <FileTextIcon className="h-4 w-4" /> },
         { key: "excel", label: "Excel", icon: <FileSpreadsheetIcon className="h-4 w-4" /> },
-        { key: "csv",   label: "CSV",   icon: <TableIcon           className="h-4 w-4" /> },
+        { key: "csv", label: "CSV", icon: <TableIcon className="h-4 w-4" /> },
     ]
 
     const preview = sessions.slice(0, PREVIEW_ROWS)
@@ -104,7 +104,7 @@ export function ExportDialog({ range }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger render={
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button size="sm" className="gap-2 bg-primary">
                     <DownloadIcon className="h-4 w-4" />
                     Export
                 </Button>
@@ -196,11 +196,10 @@ export function ExportDialog({ range }: Props) {
                                                         <td className="px-3 py-1.5">{formatDuration(s.durationMin)}</td>
                                                         <td className="px-3 py-1.5">{formatFee(s.bill)}</td>
                                                         <td className="px-3 py-1.5">
-                                                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                                                status === "Ongoing"
-                                                                    ? "bg-emerald-100 text-emerald-700"
-                                                                    : "bg-gray-100 text-gray-600"
-                                                            }`}>
+                                                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${status === "Ongoing"
+                                                                ? "bg-emerald-100 text-emerald-700"
+                                                                : "bg-gray-100 text-gray-600"
+                                                                }`}>
                                                                 {status}
                                                             </span>
                                                         </td>

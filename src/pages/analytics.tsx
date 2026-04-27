@@ -8,19 +8,16 @@ import { ExportDialog } from "@/components/export-dialog"
 
 export function AnalyticsPage() {
     return (
-        <PageContent>
-            <PageHeader
-                title="Analytics"
-                description="Track revenue, vehicles, and parking performance"
-            />
-            <AnalyticsLayout
-                stats={<AnalyticsStats />}
-                charts={<AnalyticsCharts />}
-                actions={<ExportDialog range="all" />}
-            />
-            <div className="w-full px-6 pb-8">
-                <AnalyticsActivityChart />
-            </div>
-        </PageContent>
+        <>
+            <PageHeader title="Analytics" description="Track revenue, vehicles, and parking performance" />
+            <PageContent>
+                <AnalyticsLayout
+                    stats={<AnalyticsStats />}
+                    charts={<AnalyticsCharts />}
+                    actions={<ExportDialog range="all" />}
+                    activity={<AnalyticsActivityChart />}
+                />
+            </PageContent>
+        </>
     )
 }

@@ -1,10 +1,12 @@
-
 import os
+from dotenv import load_dotenv
 from urllib.parse import quote
 
-CAMERA_ID  = os.getenv("CAMERA_ID",  "VRH5NF16UHEDEABP111A")
-CAMERA_IP  = os.getenv("CAMERA_IP",  "192.168.254.122")
-CAMERA_MAC = os.getenv("CAMERA_MAC", "F4:1C:26:58:74:25")
+load_dotenv()
+
+CAMERA_ID  = os.getenv("CAMERA_ID",  "")
+CAMERA_IP  = os.getenv("CAMERA_IP",  "")
+CAMERA_MAC = os.getenv("CAMERA_MAC", "")
 
 RTSP_PORT = int(os.getenv("RTSP_PORT", "554"))
 DEFAULT_RTSP_PATHS = [
@@ -30,8 +32,8 @@ RTSP_PATHS = [
     if p.strip()
 ]
 RTSP_TRANSPORT = os.getenv("RTSP_TRANSPORT", "tcp")
-RTSP_USER      = os.getenv("RTSP_USER",     "chenlayon21@gmail.com")
-RTSP_PASSWORD  = os.getenv("RTSP_PASSWORD", "Techsentinel1")
+RTSP_USER      = os.getenv("RTSP_USER",      "")
+RTSP_PASSWORD  = os.getenv("RTSP_PASSWORD",  "")
 
 VIDEO_FILE     = os.getenv("VIDEO_FILE", "")
 USE_VIDEO_FILE = bool(VIDEO_FILE)
@@ -53,10 +55,7 @@ def _build_rtsp_urls(user, password, ip, port, paths):
            [f"rtsp://{ip}:{port}/{quote(p, safe='/?&=')}" for p in paths]
 
 
-RTSP_URL_OVERRIDE = os.getenv(
-    "RTSP_URL",
-    "rtsp://chenlayon21%40gmail.com:Techsentinel1@192.168.254.122:554/Streaming/Channels/101"
-)
+RTSP_URL_OVERRIDE = os.getenv("RTSP_URL", "")
 RTSP_URLS = [RTSP_URL_OVERRIDE] if RTSP_URL_OVERRIDE else _build_rtsp_urls(
     RTSP_USER, RTSP_PASSWORD, CAMERA_IP, RTSP_PORT, RTSP_PATHS
 )

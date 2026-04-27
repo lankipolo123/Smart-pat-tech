@@ -83,7 +83,6 @@ function App() {
           />
         )}
 
-        {/* Account created */}
         <Dialog open={dialog === "created"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
@@ -100,7 +99,6 @@ function App() {
           </DialogContent>
         </Dialog>
 
-        {/* Email already exists */}
         <Dialog open={dialog === "exists"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
@@ -116,7 +114,6 @@ function App() {
           </DialogContent>
         </Dialog>
 
-        {/* Invalid credentials */}
         <Dialog open={dialog === "login-invalid"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
@@ -134,7 +131,6 @@ function App() {
           </DialogContent>
         </Dialog>
 
-        {/* Server unreachable */}
         <Dialog open={dialog === "login-server"} onOpenChange={() => { }}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
@@ -170,7 +166,7 @@ function App() {
           onNavigate={setActive}
           onLogout={handleLogout}
         />
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {renderPage()}
         </div>
       </div>

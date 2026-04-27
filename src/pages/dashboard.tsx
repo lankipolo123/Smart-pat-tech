@@ -16,22 +16,21 @@ export function DashboardPage() {
     }, [])
 
     return (
-        <PageContent>
-            <PageHeader
-                title="Dashboard"
-                description="Real-time occupancy monitoring"
-            />
-            <DashboardContentLayout
-                feed={
-                    <CCTVFeedCard
-                        streamUrl={streamSrc}
-                        onRefresh={handleRefresh}
-                    />
-                }
-                alerts={<ActiveAlerts />}
-                summary={<ParkingSummary />}
-                slots={<ParkingSlotsGrid compact />}
-            />
-        </PageContent>
+        <>
+            <PageHeader title="Dashboard" description="Real-time occupancy monitoring" />
+            <PageContent>
+                <DashboardContentLayout
+                    feed={
+                        <CCTVFeedCard
+                            streamUrl={streamSrc}
+                            onRefresh={handleRefresh}
+                        />
+                    }
+                    alerts={<ActiveAlerts />}
+                    summary={<ParkingSummary />}
+                    slots={<ParkingSlotsGrid compact />}
+                />
+            </PageContent>
+        </>
     )
 }

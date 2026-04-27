@@ -26,13 +26,10 @@ export function SettingsPage() {
     const lastName = rest.join(" ")
 
     return (
-        <PageContent>
-            <PageHeader
-                title="Settings"
-                description="Manage your account"
-            />
-            <SettingsLayout
-                one={
+        <>
+            <PageHeader title="Settings" description="Manage your account" />
+            <PageContent>
+                <SettingsLayout one={
                     <ProfileHeader
                         displayName={name}
                         role="User"
@@ -42,19 +39,19 @@ export function SettingsPage() {
                         lastLogin={formatDate(lastLogin)}
                     />
                 }
-                two={
-                    <ManageAccountCard
-                        userEmail={email}
-                        {...accountActions}
-                    />
-                }
-                three={
-                    <PersonalInfoForm
-                        userInfo={{ firstName, lastName, email }}
-                        onUpdate={(data) => console.log("UPDATE:", data)}
-                    />
-                }
-            />
-        </PageContent>
+                    two={
+                        <ManageAccountCard userEmail={email}
+                            {...accountActions}
+                        />
+                    }
+                    three={
+                        <PersonalInfoForm
+                            userInfo={{ firstName, lastName, email }}
+                            onUpdate={(data) => console.log("UPDATE:", data)}
+                        />
+                    }
+                />
+            </PageContent>
+        </>
     )
 }

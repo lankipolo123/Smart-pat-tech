@@ -6,7 +6,7 @@ type Props = {
 
 export function PageContent({ children }: Props) {
     return (
-        <div className="w-full flex flex-col">
+        <div className="flex-1 overflow-y-auto w-full flex flex-col">
             {children}
         </div>
     )

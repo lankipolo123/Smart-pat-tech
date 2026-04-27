@@ -10,40 +10,12 @@ import {
 } from "@/components/ui/pagination"
 import { fetchSessions, type SessionRecord } from "@/services/parking"
 import { type ParkingRange } from "@/configs/parking-range.config"
+import { formatDateTime, formatDuration, buildPageNumbers } from "@/utils/table-utils"
+import { StatusBadge } from "@/components/status-badge"
 
 type Props = { range: ParkingRange }
 
 const PAGE_SIZE = 10
-
-function formatDateTime(ts: string | null) {
-    if (!ts) return "—"
-    try {
-        return new Date(ts).toLocaleString("en-US", {
-            month: "short", day: "numeric", year: "numeric",
-            hour: "2-digit", minute: "2-digit", hour12: true,
-        })
-    } catch { return ts }
-}
-
-function formatDuration(min: number | null) {
-    if (min === null) return "—"
-    const h = Math.floor(min / 60)
-    const m = min % 60
-    return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
-function StatusBadge({ session }: { session: SessionRecord }) {
-    if (session.exit === null)
-        return <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">Ongoing</span>
-    return <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Done</span>
-}
-
-function buildPageNumbers(current: number, total: number): (number | "…")[] {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-    if (current <= 4) return [1, 2, 3, 4, 5, "…", total]
-    if (current >= total - 3) return [1, "…", total - 4, total - 3, total - 2, total - 1, total]
-    return [1, "…", current - 1, current, current + 1, "…", total]
-}
 
 export function HistoryTable({ range }: Props) {
     const [sessions, setSessions] = useState<SessionRecord[]>([])
@@ -56,6 +28,9 @@ export function HistoryTable({ range }: Props) {
 
     const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE))
     const paginated = sessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+    const rangeStart = sessions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+    const rangeEnd = Math.min(page * PAGE_SIZE, sessions.length)
 
     function go(p: number) {
         if (p < 1 || p > totalPages) return
@@ -120,14 +95,17 @@ export function HistoryTable({ range }: Props) {
                 </Table>
 
                 {totalPages > 1 && (
-                    <div className="border-t px-4 py-3">
-                        <Pagination>
+                    <div className="border-t px-4 py-3 flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                            Showing <span className="font-medium text-foreground">{rangeStart}–{rangeEnd}</span> of <span className="font-medium text-foreground">{sessions.length}</span> records
+                        </p>
+                        <Pagination className="mx-0 w-auto">
                             <PaginationContent>
                                 <PaginationItem>
                                     <PaginationPrevious
                                         href="#"
                                         onClick={e => { e.preventDefault(); go(page - 1) }}
-                                        className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                                        className={page === 1 ? "pointer-events-none opacity-50" : "text-primary"}
                                     />
                                 </PaginationItem>
 
@@ -142,6 +120,7 @@ export function HistoryTable({ range }: Props) {
                                                 href="#"
                                                 isActive={p === page}
                                                 onClick={e => { e.preventDefault(); go(p as number) }}
+                                                className={p === page ? "text-primary-foreground" : ""}
                                             >
                                                 {p}
                                             </PaginationLink>
@@ -153,7 +132,7 @@ export function HistoryTable({ range }: Props) {
                                     <PaginationNext
                                         href="#"
                                         onClick={e => { e.preventDefault(); go(page + 1) }}
-                                        className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+                                        className={page === totalPages ? "pointer-events-none opacity-50" : "text-primary"}
                                     />
                                 </PaginationItem>
                             </PaginationContent>
