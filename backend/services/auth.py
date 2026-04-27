@@ -1,9 +1,9 @@
 import sqlite3
 import bcrypt
+import jwt
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from jose import jwt
 
 DB_PATH    = Path(__file__).parent.parent / "smartpat.db"
 SECRET_KEY = "smartpat-secret-key-change-in-prod"
@@ -43,21 +43,26 @@ def init_db():
                 name            TEXT NOT NULL,
                 email           TEXT UNIQUE NOT NULL,
                 hashed_password TEXT NOT NULL,
+                avatar_url      TEXT,
                 created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
                 last_login      TEXT
             )
         """)
-        for col in ("last_login TEXT", "avatar_url TEXT"):
-            try:
-                conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
-            except Exception:
-                pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN last_login TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+        except Exception:
+            pass
 
 
 def _make_token(user_id: int) -> str:
     return jwt.encode(
         {"sub": str(user_id), "exp": datetime.utcnow() + timedelta(days=TOKEN_DAYS)},
-        SECRET_KEY, algorithm=ALGORITHM
+        SECRET_KEY,
+        algorithm=ALGORITHM
     )
 
 
@@ -109,17 +114,18 @@ def login(email: str, password: str) -> dict:
     }
 
 
-def update_avatar(user_id: int, avatar_url: str) -> None:
+def update_avatar(user_id: int, url: str) -> None:
     with get_conn() as conn:
         conn.execute(
             "UPDATE users SET avatar_url = ? WHERE id = ?",
-            (avatar_url, user_id)
+            (url, user_id)
         )
 
 
-def get_avatar(user_id: int) -> str | None:
+def get_avatar(user_id: int):
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT avatar_url FROM users WHERE id = ?", (user_id,)
+            "SELECT avatar_url FROM users WHERE id = ?",
+            (user_id,)
         ).fetchone()
         return row["avatar_url"] if row else None

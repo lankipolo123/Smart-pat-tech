@@ -10,7 +10,7 @@ import jwt
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
@@ -40,17 +40,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── serve built React app if dist/ exists ─────────────────────────────────────
 DIST = Path(__file__).parent.parent / "dist"
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
-# ── serve avatar uploads ──────────────────────────────────────────────────────
 AVATARS_DIR = Path(__file__).parent / "uploads" / "avatars"
 AVATARS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/avatars", StaticFiles(directory=AVATARS_DIR), name="avatars")
 
-# ── token helper ─────────────────────────────────────────────────────────────
 def _get_user_id(request: Request) -> int:
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
@@ -62,7 +59,6 @@ def _get_user_id(request: Request) -> int:
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# ── model ────────────────────────────────────────────────────────────────────
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = YOLO("yolov8n.pt")
 model.to(device)
@@ -76,13 +72,11 @@ JPEG_QUALITY = 65
 SKIP_FRAMES  = 2
 TARGET_FPS   = 20
 
-# ── tracker ──────────────────────────────────────────────────────────────────
 def make_tracker():
     return DeepSort(max_age=20, n_init=2, nn_budget=50, embedder_gpu=device == "cuda")
 
 tracker = make_tracker()
 
-# ── shared state ─────────────────────────────────────────────────────────────
 latest_frame: bytes | None = None
 frame_lock    = threading.Lock()
 cap_lock      = threading.Lock()
@@ -136,7 +130,7 @@ def _inference_loop():
     global latest_frame
 
     frame_idx  = 0
-    last_boxes = []
+    last_boxes: list = []
 
     while True:
         with cap_lock:
@@ -255,6 +249,46 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
 def get_user_avatar(request: Request):
     user_id = _get_user_id(request)
     return {"avatar_url": get_avatar(user_id)}
+
+# ── cameras endpoint ──────────────────────────────────────────────────────────
+@app.get("/cameras")
+def list_cameras():
+    cameras = []
+    for i, url in enumerate(_CONFIGURED_RTSP_URLS):
+        cameras.append({"id": i, "url": url, "stream": f"/video?cam={i}"})
+    if not cameras:
+        cameras.append({"id": 0, "url": "webcam", "stream": "/video"})
+    return cameras
+
+# ── parking endpoints ─────────────────────────────────────────────────────────
+@app.get("/parking/slots")
+def parking_slots():
+    return get_slots()
+
+@app.get("/parking/sessions")
+def parking_sessions(range: str = "today"):
+    return get_sessions(range)
+
+@app.get("/parking/stats")
+def parking_stats(range: str = "today"):
+    return get_stats(range)
+
+# ── analytics endpoints ───────────────────────────────────────────────────────
+@app.get("/analytics/stats")
+def analytics_stats():
+    return get_analytics_stats()
+
+@app.get("/analytics/revenue")
+def analytics_revenue():
+    return get_revenue_data()
+
+@app.get("/analytics/vehicles")
+def analytics_vehicles():
+    return get_vehicle_data()
+
+@app.get("/analytics/activity")
+def analytics_activity():
+    return get_activity_data()
 
 # ── video stream ─────────────────────────────────────────────────────────────
 @app.get("/video")
