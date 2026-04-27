@@ -3,12 +3,12 @@ import re
 import time
 import os
 import threading
-import subprocess
+import asyncio
 import torch
 import jwt
 
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -68,9 +68,9 @@ if device == "cuda":
 model.overrides["verbose"] = False
 
 INFER_SIZE   = 320
-JPEG_QUALITY = 45   # lowered from 65
-SKIP_FRAMES  = 4    # lowered from 2
-TARGET_FPS   = 15   # lowered from 20
+JPEG_QUALITY = 45
+SKIP_FRAMES  = 4
+TARGET_FPS   = 15
 
 def make_tracker():
     return DeepSort(max_age=20, n_init=2, nn_budget=50, embedder_gpu=device == "cuda")
@@ -84,6 +84,10 @@ cap: cv2.VideoCapture | None = None
 camera_stream: CameraStream | None = None
 _running      = False
 _loop_source  = False
+
+# WebSocket clients
+ws_clients: set = set()
+ws_clients_lock = threading.Lock()
 
 
 def open_source(source):
@@ -133,7 +137,6 @@ def _inference_loop():
     last_boxes: list = []
 
     while True:
-        # Read frame outside cap_lock to avoid blocking the stream
         frame = None
         with cap_lock:
             if camera_stream is not None:
@@ -296,7 +299,7 @@ def analytics_vehicles():
 def analytics_activity():
     return get_activity_data()
 
-# ── video stream ─────────────────────────────────────────────────────────────
+# ── video stream (MJPEG fallback) ────────────────────────────────────────────
 @app.get("/video")
 def video():
     return StreamingResponse(
@@ -319,3 +322,28 @@ def _stream():
             b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
         )
         time.sleep(interval)
+
+# ── WebSocket video stream ────────────────────────────────────────────────────
+@app.websocket("/ws/video")
+async def ws_video(websocket: WebSocket):
+    await websocket.accept()
+    with ws_clients_lock:
+        ws_clients.add(websocket)
+
+    interval = 1 / TARGET_FPS
+    try:
+        while True:
+            with frame_lock:
+                frame = latest_frame
+
+            if frame is not None:
+                await websocket.send_bytes(frame)
+
+            await asyncio.sleep(interval)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        with ws_clients_lock:
+            ws_clients.discard(websocket)

@@ -2,7 +2,7 @@ import { RefreshCw, Camera, ChevronDown } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
 import { fetchCameras, switchToWebcam, connectToUrl, type Camera as CameraDevice } from "@/services/camera"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
@@ -35,19 +35,77 @@ type Props = {
 }
 
 export function CCTVFeedCard({
-    streamUrl,
     detections = 0,
     parkingSlots = 0,
     title,
     description,
     onRefresh,
 }: Props) {
-    const [connected, setConnected] = useState<boolean | null>(null)
+    const [status, setStatus] = useState<CCTVStatus>("connecting")
     const [sourceOpen, setSourceOpen] = useState(false)
     const [cameras, setCameras] = useState<CameraDevice[]>([])
     const [activeSource, setActiveSource] = useState<string | null>(null)
     const [rtspUrl, setRtspUrl] = useState("")
+    const [imageSrc, setImageSrc] = useState<string | null>(null)
+
     const panelRef = useRef<HTMLDivElement>(null)
+    const wsRef = useRef<WebSocket | null>(null)
+    const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const blobUrlRef = useRef<string | null>(null)
+
+    const connectWs = useCallback(() => {
+        if (wsRef.current) {
+            wsRef.current.close()
+            wsRef.current = null
+        }
+
+        setStatus("connecting")
+
+        const ws = new WebSocket(`ws://localhost:8000/ws/video`)
+        wsRef.current = ws
+
+        ws.binaryType = "blob"
+
+        ws.onopen = () => {
+            setStatus("live")
+            if (reconnectTimer.current) {
+                clearTimeout(reconnectTimer.current)
+                reconnectTimer.current = null
+            }
+        }
+
+        ws.onmessage = (event) => {
+            // Revoke previous blob URL to free memory
+            if (blobUrlRef.current) {
+                URL.revokeObjectURL(blobUrlRef.current)
+            }
+            const url = URL.createObjectURL(event.data)
+            blobUrlRef.current = url
+            setImageSrc(url)
+        }
+
+        ws.onerror = () => {
+            setStatus("disconnected")
+        }
+
+        ws.onclose = () => {
+            setStatus("disconnected")
+            // Auto-reconnect after 2s
+            reconnectTimer.current = setTimeout(() => {
+                connectWs()
+            }, 2000)
+        }
+    }, [])
+
+    // Connect on mount, cleanup on unmount
+    useEffect(() => {
+        connectWs()
+        return () => {
+            if (wsRef.current) wsRef.current.close()
+            if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
+            if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+        }
+    }, [connectWs])
 
     useEffect(() => {
         fetchCameras().then(list => {
@@ -58,7 +116,7 @@ export function CCTVFeedCard({
         })
     }, [])
 
-    // close panel when clicking outside
+    // Close panel when clicking outside
     useEffect(() => {
         if (!sourceOpen) return
         const handler = (e: MouseEvent) => {
@@ -71,7 +129,7 @@ export function CCTVFeedCard({
     }, [sourceOpen])
 
     const handleSelectCamera = async (index: number) => {
-        try { await switchToWebcam(index) } catch {}
+        try { await switchToWebcam(index) } catch { }
         setActiveSource(`cam:${index}`)
         setSourceOpen(false)
         onRefresh?.()
@@ -80,16 +138,19 @@ export function CCTVFeedCard({
     const handleConnectRtsp = async () => {
         const url = rtspUrl.trim()
         if (!url) return
-        try { await connectToUrl(url) } catch {}
+        try { await connectToUrl(url) } catch { }
         setActiveSource("rtsp")
         setRtspUrl("")
         setSourceOpen(false)
         onRefresh?.()
     }
 
-    const status: CCTVStatus = connected === true ? "live" : connected === false ? "disconnected" : "connecting"
+    const handleRefresh = () => {
+        connectWs()
+        onRefresh?.()
+    }
+
     const cfg = statusConfig[status]
-    const isLive = connected === true && !!streamUrl
 
     const pillClass = cn(
         "inline-flex items-center w-fit self-start",
@@ -119,16 +180,13 @@ export function CCTVFeedCard({
                     className="relative w-full overflow-hidden rounded-lg bg-[#0d1117]"
                     style={{ aspectRatio: "16/9", minHeight: "360px" }}
                 >
-                    {streamUrl && (
+                    {imageSrc && status === "live" ? (
                         <img
-                            src={streamUrl}
+                            src={imageSrc}
                             alt="CCTV live feed"
-                            className={cn("h-full w-full object-cover", !isLive && "hidden")}
-                            onLoad={() => setConnected(true)}
-                            onError={() => setConnected(false)}
+                            className="h-full w-full object-cover"
                         />
-                    )}
-                    {!isLive && (
+                    ) : (
                         <div className="flex h-full w-full items-center justify-center">
                             <p className="text-sm text-white/40">{cfg.message}</p>
                         </div>
@@ -143,7 +201,6 @@ export function CCTVFeedCard({
                         ref={panelRef}
                         className="w-full rounded-lg border border-border bg-background p-3 flex flex-col gap-3"
                     >
-                        {/* Available cameras */}
                         {cameras.length > 0 && (
                             <div className="flex flex-col gap-1">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -168,7 +225,6 @@ export function CCTVFeedCard({
                             </div>
                         )}
 
-                        {/* RTSP / IP Camera */}
                         <div className="flex flex-col gap-1.5">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 IP Camera / RTSP
@@ -206,7 +262,7 @@ export function CCTVFeedCard({
                             {activeLabel}
                             <ChevronDown className={cn("size-3.5 transition-transform", sourceOpen && "rotate-180")} />
                         </Button>
-                        <Button size="sm" onClick={onRefresh}>
+                        <Button size="sm" onClick={handleRefresh}>
                             <RefreshCw className="size-3.5" />
                             Refresh
                         </Button>
