@@ -68,9 +68,9 @@ if device == "cuda":
 model.overrides["verbose"] = False
 
 INFER_SIZE   = 320
-JPEG_QUALITY = 65
-SKIP_FRAMES  = 2
-TARGET_FPS   = 20
+JPEG_QUALITY = 45   # lowered from 65
+SKIP_FRAMES  = 4    # lowered from 2
+TARGET_FPS   = 15   # lowered from 20
 
 def make_tracker():
     return DeepSort(max_age=20, n_init=2, nn_budget=50, embedder_gpu=device == "cuda")
@@ -133,6 +133,8 @@ def _inference_loop():
     last_boxes: list = []
 
     while True:
+        # Read frame outside cap_lock to avoid blocking the stream
+        frame = None
         with cap_lock:
             if camera_stream is not None:
                 frame = camera_stream.read()
@@ -146,6 +148,10 @@ def _inference_loop():
                         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     time.sleep(0.01)
                     continue
+
+        if frame is None:
+            time.sleep(0.05)
+            continue
 
         h, w = frame.shape[:2]
         if w > 640:
