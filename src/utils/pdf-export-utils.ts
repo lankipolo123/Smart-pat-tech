@@ -75,8 +75,8 @@ async function buildDoc(sessions: SessionRecord[], range: string, withLogo = tru
             status,
         ].map((text, ci) => {
             const isStatus = ci === 6
-            const statusBg = status === "Active" ? "#D1FAE5" : "#F3F4F6"
-            const statusFg = status === "Active" ? "#065F46" : "#374151"
+            const statusBg = status === "Ongoing" ? "#D1FAE5" : "#F3F4F6"
+            const statusFg = status === "Ongoing" ? "#065F46" : "#374151"
             return {
                 text: String(text),
                 fillColor: isStatus ? statusBg : bg,

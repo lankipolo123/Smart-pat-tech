@@ -74,7 +74,7 @@ export async function exportSessionsToExcel(sessions: SessionRecord[], range: st
         })
 
         const statusCell = row.getCell(7)
-        if (status === "Active") {
+        if (status === "Ongoing") {
             statusCell.font = { bold: true, color: { argb: "FF065F46" }, size: 9.5 }
             statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } }
         } else {

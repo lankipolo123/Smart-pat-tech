@@ -6,6 +6,7 @@ import { DashboardPage } from "@/pages/dashboard"
 import { HistoryPage } from "@/pages/history"
 import { AnalyticsPage } from "@/pages/analytics"
 import { SettingsPage } from "@/pages/settings"
+import ConfigurePage from "@/pages/configure"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { loginUser, registerUser, saveSession, loadSession, clearSession } from "@/services/auth"
@@ -19,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+
 
 type SessionUser = { token: string; name: string; email: string; joinedAt: string | null; lastLogin: string | null }
 type AuthDialog = "created" | "exists" | "login-invalid" | "login-server" | null
@@ -150,11 +152,19 @@ function App() {
 
   const renderPage = () => {
     switch (active) {
-      case "dashboard": return <DashboardPage />
-      case "history": return <HistoryPage />
-      case "analytics": return <AnalyticsPage />
-      case "settings": return <SettingsPage />
-      default: return <DashboardPage />
+      case "dashboard":
+        return <DashboardPage />
+      case "history":
+        return <HistoryPage />
+      case "configure":
+        return <ConfigurePage />
+      case "analytics":
+        return <AnalyticsPage />
+      case "settings":
+        return <SettingsPage />
+      default:
+        return <DashboardPage />
+
     }
   }
 

@@ -59,6 +59,17 @@ export async function fetchParkingStats(range: string): Promise<ParkingStats | n
     try {
         const r = await fetch(`${API}/parking/stats?range=${range}`)
         if (!r.ok) return null
-        return r.json()
+        const row = await r.json()
+        return {
+            totalSessions: row.totalSessions ?? row.total_sessions ?? 0,
+            totalRevenue: row.totalRevenue ?? row.total_revenue ?? 0,
+            avgDuration: row.avgDuration ?? row.avg_duration_min ?? 0,
+            avgCharge: row.avgCharge ?? (
+                row.total_sessions ? row.total_revenue / row.total_sessions : 0
+            ),
+            occupancyCurrent: row.occupancyCurrent ?? row.occupied_now ?? 0,
+            occupancyTotal: row.occupancyTotal ?? row.total_zones ?? 0,
+            vehicleTurnover: row.vehicleTurnover ?? 0,
+        }
     } catch { return null }
 }

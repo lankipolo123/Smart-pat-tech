@@ -2,13 +2,51 @@
 
 import asyncio
 import logging
+from typing import Optional
+
+import cv2
+import numpy as np
 from fastapi import WebSocket
-from backend.services.capture import CameraStream
 from backend.services.detector import YOLODetector, ParkingSpaceMonitor
 from backend.services.utils import create_overlay, encode_frame_to_base64
-from backend.services.config import RTSP_URLS, VIDEO_FILE, USE_VIDEO_FILE
+from backend.services.config import RTSP_URLS
 
 logger = logging.getLogger(__name__)
+
+
+class CameraStream:
+    def __init__(self, rtsp_urls: list[str]):
+        self.source_urls = rtsp_urls
+        self.capture: Optional[cv2.VideoCapture] = None
+
+    def open(self) -> None:
+        self.close()
+        for url in self.source_urls:
+            capture = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+            capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            if capture.isOpened():
+                self.capture = capture
+                return
+            capture.release()
+
+    def read(self) -> np.ndarray:
+        if self.capture is None or not self.capture.isOpened():
+            self.open()
+        if self.capture is None or not self.capture.isOpened():
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "Camera unavailable", (170, 240),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+            return frame
+        ok, frame = self.capture.read()
+        if ok and frame is not None:
+            return frame
+        self.open()
+        return np.zeros((480, 640, 3), dtype=np.uint8)
+
+    def close(self) -> None:
+        if self.capture is not None:
+            self.capture.release()
+            self.capture = None
 
 
 class VideoStreamManager:

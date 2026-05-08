@@ -1,12 +1,18 @@
 //backend run
 at terminal 
 type CD backend
-uvicorn main:app --reload
+uvicorn main:app --port 8000 --reload
 //frontend run 
 at the terminal also add a new terminal(cmd) 
 and run 
-npm run dev
 
+
+CAMERA_IP=192.168.1.14
+RTSP_PORT=554
+RTSP_USER=admin
+RTSP_PASSWORD=admin123
+RTSP_URL=rtsp://admin:admin123@192.168.1.14:8554/live/ch00_0
+RTSP_TRANSPORT=tcp
 
 
 //camera

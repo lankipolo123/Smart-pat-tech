@@ -1,50 +1,74 @@
-import { useEffect, useState } from "react"
-import { ParkingSlotCard } from "@/components/parking-slot"
-import { fetchSlots, type ParkingSlot } from "@/services/parking"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+// components/parking-slots-grid.tsx
+import { useEffect, useState, useRef } from "react"
+import { type Zone } from "@/services/camera"
 
-const LEGEND = [
-    { label: "Available", dot: "bg-green-500" },
-    { label: "Occupied",  dot: "bg-destructive" },
-    { label: "Reserved",  dot: "bg-orange-400" },
-]
+type Props = {
+    slots?: Zone[]
+}
 
-type Props = { compact?: boolean }
+export function ParkingSlotsGrid({ slots: propSlots }: Props) {
 
-export function ParkingSlotsGrid({ compact }: Props) {
-    const [slots, setSlots] = useState<ParkingSlot[]>([])
+    const [slots, setSlots] = useState<Zone[]>([])
+    const wsRef = useRef<WebSocket | null>(null)
 
-    useEffect(() => { fetchSlots().then(setSlots) }, [])
+    // If parent passes slots as props, use those directly
+    // Otherwise fall back to self-managed fetch + WS
+    const displaySlots = propSlots ?? slots
+
+    useEffect(() => {
+        // Skip self-fetching if parent is controlling data
+        if (propSlots !== undefined) return
+
+        fetch("http://localhost:8000/zones")
+            .then(r => r.json())
+            .then(setSlots)
+            .catch(() => { })
+
+        const ws = new WebSocket("ws://localhost:8000/ws/zones")
+
+        ws.onmessage = (event) => {
+            const data: Zone[] = JSON.parse(event.data)
+            setSlots(data)
+        }
+
+        wsRef.current = ws
+
+        return () => ws.close()
+
+    }, [propSlots])
+
+    if (displaySlots.length === 0) {
+        return (
+            <div className="flex items-center justify-center py-10 text-muted-foreground text-sm">
+                No zones configured yet.
+            </div>
+        )
+    }
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-start justify-between flex-wrap gap-2">
-                    <div>
-                        <CardTitle className={compact ? "text-sm" : undefined}>Parking Slots</CardTitle>
-                        {!compact && (
-                            <CardDescription>Real-time slot status from CCTV detection</CardDescription>
-                        )}
+        <div className="grid grid-cols-5 gap-3">
+            {displaySlots.map(s => (
+                <div
+                    key={s.id}
+                    className={`p-3 rounded-lg border transition-all duration-300 ${s.occupied
+                            ? "bg-red-500/90 border-red-600 text-white"
+                            : "bg-green-500/90 border-green-600 text-white"
+                        }`}
+                >
+                    <div className="font-bold text-sm">{s.slot}</div>
+                    <div className="text-xs opacity-80 mt-0.5">
+                        {s.occupied ? "OCCUPIED" : "AVAILABLE"}
                     </div>
-                    <div className="flex gap-3 flex-wrap">
-                        {LEGEND.map(l => (
-                            <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span className={`size-2 rounded-full ${l.dot}`} />
-                                {l.label}
-                            </div>
-                        ))}
-                    </div>
+                    {s.occupied && s.entry_time && (
+                        <div className="text-[10px] opacity-60 mt-1">
+                            {new Date(s.entry_time).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                            })}
+                        </div>
+                    )}
                 </div>
-            </CardHeader>
-            <CardContent>
-                <div className={compact ? "overflow-y-auto max-h-[420px] pr-1" : ""}>
-                    <div className={compact ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-5 gap-3"}>
-                        {slots.map(slot => (
-                            <ParkingSlotCard key={slot.id} slot={slot} compact={compact} />
-                        ))}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+            ))}
+        </div>
     )
 }

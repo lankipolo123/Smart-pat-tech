@@ -8,9 +8,10 @@ import { useAuth } from "@/contexts/auth-context"
 type Props = {
     title: string
     description?: string
+    extra?: React.ReactNode
 }
 
-export function PageHeader({ title, description }: Props) {
+export function PageHeader({ title, description, extra }: Props) {
     const { name, email } = useAuth()
     const [time, setTime] = useState("")
     const [date, setDate] = useState("")
@@ -33,7 +34,7 @@ export function PageHeader({ title, description }: Props) {
     }, [])
 
     return (
-        <div className="sticky top-0 z-10 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between overflow-hidden">
+        <div className="sticky top-0 z-50 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between">
 
             {/* TITLE + DESCRIPTION */}
             <div className="flex flex-col gap-0.5">
@@ -46,37 +47,43 @@ export function PageHeader({ title, description }: Props) {
             </div>
 
             {/* RIGHT SIDE */}
-            {cfg.showUserInfo && (
-                <div className="flex items-center gap-4 text-sm text-foreground/70">
-
-                    {/* DATE */}
-                    <div className="flex items-center gap-1">
-                        <DateIcon className="size-4" />
-                        <span>{date}</span>
+            <div className="flex items-center gap-4 text-sm text-foreground/70">
+                {extra && (
+                    <div className="mr-2">
+                        {extra}
                     </div>
+                )}
 
-                    {/* TIME */}
-                    <div className="flex items-center gap-1">
-                        <TimeIcon className="size-4" />
-                        <span>{time}</span>
-                    </div>
+                {cfg.showUserInfo && (
+                    <>
+                        {/* DATE */}
+                        <div className="flex items-center gap-1">
+                            <DateIcon className="size-4" />
+                            <span>{date}</span>
+                        </div>
 
-                    <span className="opacity-40">/</span>
+                        {/* TIME */}
+                        <div className="flex items-center gap-1">
+                            <TimeIcon className="size-4" />
+                            <span>{time}</span>
+                        </div>
 
-                    {/* AVATAR */}
-                    <Avatar className="size-10">
-                        <AvatarImage src="" />
-                        <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                        <span className="opacity-40">/</span>
 
-                    {/* USER INFO */}
-                    <div className="leading-tight">
-                        <div className="text-sm font-medium text-primary">{name}</div>
-                        <div className="text-xs text-muted-foreground">{email}</div>
-                    </div>
+                        {/* AVATAR */}
+                        <Avatar className="size-10">
+                            <AvatarImage src="" />
+                            <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
 
-                </div>
-            )}
+                        {/* USER INFO */}
+                        <div className="leading-tight">
+                            <div className="text-sm font-medium text-primary">{name}</div>
+                            <div className="text-xs text-muted-foreground">{email}</div>
+                        </div>
+                    </>
+                )}
+            </div>
 
         </div>
     )

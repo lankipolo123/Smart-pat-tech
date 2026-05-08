@@ -62,3 +62,24 @@ RTSP_URLS = [RTSP_URL_OVERRIDE] if RTSP_URL_OVERRIDE else _build_rtsp_urls(
 RTSP_URL = RTSP_URLS[0] if RTSP_URLS else ""
 
 WS_PATH = "/ws/video"
+
+
+def get_env_rtsp_seed() -> dict | None:
+    """Build a camera config payload from env RTSP settings."""
+    if not RTSP_URL_OVERRIDE and not CAMERA_IP:
+        return None
+    if not RTSP_URL:
+        return None
+    return {
+        "cameraType": "rtsp",
+        "cameraName": "Environment RTSP",
+        "rtspUrl": RTSP_URL,
+        "rtspUser": RTSP_USER,
+        "rtspPassword": RTSP_PASSWORD,
+        "rtspPort": str(RTSP_PORT),
+        "rtspTransport": RTSP_TRANSPORT,
+        "rtspPaths": ",".join(RTSP_PATHS),
+        "cameraIp": CAMERA_IP,
+        "cameraId": CAMERA_ID,
+        "cameraMac": CAMERA_MAC,
+    }

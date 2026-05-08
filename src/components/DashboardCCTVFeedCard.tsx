@@ -1,28 +1,13 @@
+// components/DashboardCCTVFeedCard.tsx
 import { RefreshCw, Camera, ChevronDown, PenLine, Trash2, Check } from "lucide-react"
-
 import {
-    Card,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-    CardContent,
-    CardFooter,
+    Card, CardHeader, CardTitle, CardDescription,
+    CardContent, CardFooter,
 } from "@/components/ui/card"
-
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-
-import {
-    useRef,
-    useState,
-    useEffect,
-    useCallback,
-} from "react"
-
-import {
-    fetchCameras,
-    type Camera as CameraDevice,
-} from "@/services/camera"
+import { useRef, useState, useEffect, useCallback } from "react"
+import { type Camera as CameraDevice } from "@/services/camera"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
 
@@ -52,84 +37,116 @@ type Props = {
     title?: string
     description?: string
     onRefresh?: () => void
-    /** Called with normalized [0-1] points and a suggested slot name */
     onZoneDrawn?: (points: Point[], slotName: string) => void
+    activeCamera?: string | null
+    activeCameraId?: number | null
+    cameras?: CameraDevice[]
+    onCameraSwitch?: (cameraId: number) => void
+    connectionState?: CCTVStatus
+    connectionMessage?: string | null
 }
 
-export function CCTVFeedCard({
+export function DashboardCCTVFeedCard({
     detections = 0,
     parkingSlots = 0,
     title,
     description,
     onRefresh,
     onZoneDrawn,
+    activeCamera,
+    activeCameraId,
+    cameras = [],
+    onCameraSwitch,
+    connectionState,
+    connectionMessage,
 }: Props) {
-
-    const [status, setStatus] = useState<CCTVStatus>("connecting")
-    const [cameras, setCameras] = useState<CameraDevice[]>([])
-    const [activeSource, setActiveSource] = useState<string | null>(null)
+    const [wsStatus, setWsStatus] = useState<CCTVStatus>("connecting")
     const [imageSrc, setImageSrc] = useState<string | null>(null)
-
-    // ── Drawing state ──
     const [drawing, setDrawing] = useState(false)
     const [points, setPoints] = useState<Point[]>([])
-    const [mousePos, setMousePos] = useState<Point | null>(null)
 
     const wsRef = useRef<WebSocket | null>(null)
     const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const retryDelayRef = useRef(1_000)
     const blobUrlRef = useRef<string | null>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
+    const mountedRef = useRef(false)
+    const slotCounterRef = useRef(1)
 
-    // ─────────────────────────────
-    // WS CONNECT
-    // ─────────────────────────────
+    // ─── Derive display status: WS wins when live, prop wins otherwise ───────
+    const status: CCTVStatus = connectionState ?? wsStatus
+
+    // ─── WebSocket ───────────────────────────────────────────────────────────
     const connectWs = useCallback(() => {
+        if (!mountedRef.current) return
+
+        // Clear any pending reconnect
+        if (reconnectRef.current !== null) {
+            clearTimeout(reconnectRef.current)
+            reconnectRef.current = null
+        }
+
+        // Close existing connection cleanly
         if (wsRef.current) {
+            wsRef.current.onclose = null
+            wsRef.current.onerror = null
             wsRef.current.close()
             wsRef.current = null
         }
-        setStatus("connecting")
+
+        setWsStatus("connecting")
+
         const ws = new WebSocket("ws://localhost:8000/ws/video")
-        wsRef.current = ws
         ws.binaryType = "blob"
+        wsRef.current = ws
 
         ws.onopen = () => {
-            setStatus("live")
-            if (reconnectRef.current) clearTimeout(reconnectRef.current)
+            if (!mountedRef.current) { ws.close(); return }
+            setWsStatus("live")
+            retryDelayRef.current = 1_000
         }
+
         ws.onmessage = (event) => {
+            if (!mountedRef.current) return
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-            const url = URL.createObjectURL(event.data)
+            const url = URL.createObjectURL(event.data as Blob)
             blobUrlRef.current = url
             setImageSrc(url)
         }
-        ws.onerror = () => setStatus("disconnected")
-        ws.onclose = () => {
-            setStatus("disconnected")
-            reconnectRef.current = setTimeout(connectWs, 2000)
+
+        ws.onerror = () => {
+            if (!mountedRef.current) return
+            setWsStatus("disconnected")
         }
-    }, [])
+
+        ws.onclose = () => {
+            if (!mountedRef.current) return
+            setWsStatus("disconnected")
+            // Exponential backoff: 1s → 2s → 4s → … → 30s max
+            const delay = retryDelayRef.current
+            retryDelayRef.current = Math.min(delay * 2, 30_000)
+            reconnectRef.current = setTimeout(connectWs, delay)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // ← empty deps: connectWs is stable for the lifetime of the component
 
     useEffect(() => {
+        mountedRef.current = true
         connectWs()
         return () => {
-            wsRef.current?.close()
-            if (reconnectRef.current) clearTimeout(reconnectRef.current)
+            mountedRef.current = false
+            if (reconnectRef.current !== null) clearTimeout(reconnectRef.current)
+            if (wsRef.current) {
+                wsRef.current.onclose = null
+                wsRef.current.onerror = null
+                wsRef.current.close()
+            }
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
         }
     }, [connectWs])
 
-    useEffect(() => {
-        fetchCameras().then((list) => {
-            setCameras(list)
-            if (list.length > 0) setActiveSource(`cam:${list[0].id}`)
-        })
-    }, [])
-
-    // ─────────────────────────────
-    // CANVAS DRAW
-    // ─────────────────────────────
+    // ─── Canvas drawing ──────────────────────────────────────────────────────
     useEffect(() => {
         const canvas = canvasRef.current
         const container = containerRef.current
@@ -142,51 +159,39 @@ export function CCTVFeedCard({
         const ctx = canvas.getContext("2d")
         if (!ctx) return
         ctx.clearRect(0, 0, width, height)
-
         if (points.length === 0) return
 
-        // draw filled polygon (if closed) or open polyline
         ctx.beginPath()
         ctx.moveTo(points[0][0], points[0][1])
-        for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i][0], points[i][1])
-        }
-        if (mousePos && drawing) ctx.lineTo(mousePos[0], mousePos[1])
-
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1])
         ctx.strokeStyle = "#22c55e"
         ctx.lineWidth = 2
         ctx.setLineDash([6, 3])
         ctx.stroke()
 
-        // fill semi-transparent
         if (points.length >= 3) {
             ctx.fillStyle = "rgba(34,197,94,0.15)"
             ctx.fill()
         }
 
-        // draw vertex dots
+        ctx.setLineDash([])
         for (const [px, py] of points) {
             ctx.beginPath()
             ctx.arc(px, py, 5, 0, Math.PI * 2)
             ctx.fillStyle = "#22c55e"
-            ctx.setLineDash([])
             ctx.fill()
         }
 
-        // close hint dot on first point
         if (points.length >= 3) {
             ctx.beginPath()
             ctx.arc(points[0][0], points[0][1], 8, 0, Math.PI * 2)
             ctx.strokeStyle = "rgba(255,255,255,0.7)"
             ctx.lineWidth = 1.5
-            ctx.setLineDash([])
             ctx.stroke()
         }
-    }, [points, mousePos, drawing])
+    }, [points, drawing])
 
-    // ─────────────────────────────
-    // MOUSE HANDLERS
-    // ─────────────────────────────
+    // ─── Mouse handlers ──────────────────────────────────────────────────────
     const getCanvasPoint = (e: React.MouseEvent): Point => {
         const rect = canvasRef.current!.getBoundingClientRect()
         return [e.clientX - rect.left, e.clientY - rect.top]
@@ -195,61 +200,43 @@ export function CCTVFeedCard({
     const handleCanvasClick = (e: React.MouseEvent) => {
         if (!drawing) return
         const pt = getCanvasPoint(e)
-
-        // If clicking near first point (and we have ≥3 pts) → close polygon
         if (points.length >= 3) {
             const [fx, fy] = points[0]
-            const dist = Math.hypot(pt[0] - fx, pt[1] - fy)
-            if (dist < 12) {
-                finishPolygon()
-                return
-            }
+            if (Math.hypot(pt[0] - fx, pt[1] - fy) < 12) { finishPolygon(); return }
         }
         setPoints(prev => [...prev, pt])
     }
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!drawing) return
-        setMousePos(getCanvasPoint(e))
-    }
-
     const finishPolygon = () => {
         if (points.length < 3) return
-        const canvas = canvasRef.current!
-        const { width, height } = canvas
-
-        // Normalize to [0,1] so backend coords are resolution-independent
-        const normalized: Point[] = points.map(([x, y]) => [
-            parseFloat((x / width).toFixed(4)),
-            parseFloat((y / height).toFixed(4)),
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const rounded: Point[] = points.map(([x, y]) => [
+            Number((x / canvas.width).toFixed(4)),
+            Number((y / canvas.height).toFixed(4)),
         ])
-
-        const slotName = `S${Date.now().toString().slice(-4)}`
-        onZoneDrawn?.(normalized, slotName)
+        const slotName = `S${slotCounterRef.current.toString().padStart(4, "0")}`
+        slotCounterRef.current += 1
+        onZoneDrawn?.(rounded, slotName)
         cancelDrawing()
     }
 
     const cancelDrawing = () => {
         setDrawing(false)
         setPoints([])
-        setMousePos(null)
-        // clear canvas
         const ctx = canvasRef.current?.getContext("2d")
-        if (ctx && canvasRef.current) {
+        if (ctx && canvasRef.current)
             ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-        }
     }
 
     const handleRefresh = () => {
+        retryDelayRef.current = 1_000
         connectWs()
         onRefresh?.()
     }
 
     const cfg = statusConfig[status]
-    const activeLabel =
-        activeSource?.startsWith("cam:")
-            ? cameras.find(c => c.id === Number(activeSource.split(":")[1]))?.name
-            : "IP / RTSP"
+    const activeLabel = activeCamera ?? "No Camera"
 
     return (
         <Card className="w-full">
@@ -257,24 +244,24 @@ export function CCTVFeedCard({
                 <div className="flex items-start justify-between">
                     <div>
                         <CardTitle>{title ?? "Live CCTV Feed"}</CardTitle>
-                        <CardDescription>
-                            {description ?? "Real-time parking detection"}
-                        </CardDescription>
+                        <CardDescription>{description ?? "Real-time parking detection"}</CardDescription>
                     </div>
-                    <span className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full border w-fit mt-1",
-                        cfg.pill
-                    )}>
-                        {cfg.label}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {cameras.length > 0 && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
+                                <Camera className="size-3.5" />
+                                {activeLabel}
+                                <ChevronDown className="size-3" />
+                            </Button>
+                        )}
+                        <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full border w-fit mt-1",
+                            cfg.pill,
+                        )}>
+                            {cfg.label}
+                        </span>
+                    </div>
                 </div>
-
-                {drawing && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Click to add points • Click first point to close •{" "}
-                        <span className="text-green-600 font-medium">{points.length} pts</span>
-                    </p>
-                )}
             </CardHeader>
 
             <CardContent>
@@ -290,25 +277,24 @@ export function CCTVFeedCard({
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full text-white/50 text-sm">
-                            {cfg.message}
+                            {connectionMessage ?? cfg.message}
                         </div>
                     )}
 
-                    {/* Polygon canvas overlay */}
                     <canvas
                         ref={canvasRef}
                         onClick={handleCanvasClick}
-                        onMouseMove={handleMouseMove}
+                        onMouseMove={(e) => { if (drawing) getCanvasPoint(e) }}
                         className={cn(
                             "absolute inset-0 w-full h-full",
-                            drawing ? "cursor-crosshair" : "pointer-events-none"
+                            drawing ? "cursor-crosshair" : "pointer-events-none",
                         )}
                     />
 
-                    {/* Drawing mode badge */}
                     {drawing && (
                         <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-full">
                             DRAWING ZONE
+                            <span className="text-green-600 font-medium ml-1">{points.length} pts</span>
                         </div>
                     )}
                 </div>
@@ -323,42 +309,37 @@ export function CCTVFeedCard({
                     {drawing ? (
                         <>
                             <Button size="sm" variant="outline" onClick={cancelDrawing}>
-                                <Trash2 className="size-4" />
-                                Cancel
+                                <Trash2 className="size-4" /> Cancel
                             </Button>
-                            <Button
-                                size="sm"
-                                disabled={points.length < 3}
-                                onClick={finishPolygon}
-                            >
-                                <Check className="size-4" />
-                                Save Zone
+                            <Button size="sm" disabled={points.length < 3} onClick={finishPolygon}>
+                                <Check className="size-4" /> Save Zone
                             </Button>
                         </>
                     ) : (
                         <>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setDrawing(true)}
-                            >
-                                <PenLine className="size-4" />
-                                Draw Zone
+                            <Button size="sm" variant="outline" onClick={() => setDrawing(true)}>
+                                <PenLine className="size-4" /> Draw Zone
                             </Button>
 
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => { }}
-                            >
-                                <Camera className="size-4" />
-                                {activeLabel}
-                                <ChevronDown className="size-4" />
-                            </Button>
+                            {cameras.length > 0 && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const cam = activeCameraId != null
+                                            ? cameras.find(c => c.id === activeCameraId)
+                                            : cameras.find(c => c.name === activeLabel)
+                                        if (cam) onCameraSwitch?.(cam.id)
+                                    }}
+                                >
+                                    <Camera className="size-4" />
+                                    {activeLabel}
+                                    <ChevronDown className="size-4" />
+                                </Button>
+                            )}
 
                             <Button size="sm" onClick={handleRefresh}>
-                                <RefreshCw className="size-4" />
-                                Refresh
+                                <RefreshCw className="size-4" /> Refresh
                             </Button>
                         </>
                     )}
