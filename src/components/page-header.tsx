@@ -12,7 +12,7 @@ type Props = {
 }
 
 export function PageHeader({ title, description, extra }: Props) {
-    const { name, email } = useAuth()
+    const { name, email, photoURL } = useAuth()
     const [time, setTime] = useState("")
     const [date, setDate] = useState("")
 
@@ -34,7 +34,7 @@ export function PageHeader({ title, description, extra }: Props) {
     }, [])
 
     return (
-        <div className="sticky top-0 z-50 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between">
+        <div className="sticky top-0 z-30 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between">
 
             {/* TITLE + DESCRIPTION */}
             <div className="flex flex-col gap-0.5">
@@ -72,7 +72,7 @@ export function PageHeader({ title, description, extra }: Props) {
 
                         {/* AVATAR */}
                         <Avatar className="size-10">
-                            <AvatarImage src="" />
+                            <AvatarImage src={photoURL} />
                             <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
 

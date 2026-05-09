@@ -13,17 +13,19 @@ type UserInfo = {
 
 type Props = {
     userInfo: UserInfo
-    onUpdate: (data: UserInfo) => void
+    onUpdate: (data: { firstName: string; lastName: string; email: string }) => Promise<void>
 }
 
 export function PersonalInfoForm({ userInfo, onUpdate }: Props) {
-    const [form, setForm] = useState<UserInfo>({
+    const [form, setForm] = useState({
         firstName: "",
         lastName: "",
         email: "",
         contact: "",
         address: "",
     })
+    const [saving, setSaving] = useState(false)
+    const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
 
     useEffect(() => {
         setForm({
@@ -35,12 +37,27 @@ export function PersonalInfoForm({ userInfo, onUpdate }: Props) {
         })
     }, [userInfo])
 
+    const handleSave = async () => {
+        setSaving(true)
+        setStatus("idle")
+        try {
+            await onUpdate({
+                firstName: form.firstName,
+                lastName: form.lastName,
+                email: form.email,
+            })
+            setStatus("success")
+        } catch {
+            setStatus("error")
+        } finally {
+            setSaving(false)
+        }
+    }
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="text-primary">
-                    Personal Information
-                </CardTitle>
+                <CardTitle className="text-primary">Personal Information</CardTitle>
             </CardHeader>
 
             <CardContent className="flex flex-col gap-3 pt-4">
@@ -48,16 +65,12 @@ export function PersonalInfoForm({ userInfo, onUpdate }: Props) {
                     <Input
                         placeholder="First Name"
                         value={form.firstName}
-                        onChange={(e) =>
-                            setForm({ ...form, firstName: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                     />
                     <Input
                         placeholder="Last Name"
                         value={form.lastName}
-                        onChange={(e) =>
-                            setForm({ ...form, lastName: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                     />
                 </div>
 
@@ -65,34 +78,33 @@ export function PersonalInfoForm({ userInfo, onUpdate }: Props) {
                     <Input
                         placeholder="Email"
                         value={form.email}
-                        onChange={(e) =>
-                            setForm({ ...form, email: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
                     />
                     <Input
                         placeholder="Contact"
                         value={form.contact}
-                        onChange={(e) =>
-                            setForm({ ...form, contact: e.target.value })
-                        }
+                        onChange={(e) => setForm({ ...form, contact: e.target.value })}
                     />
                 </div>
 
                 <textarea
                     placeholder="Address"
                     value={form.address}
-                    onChange={(e) =>
-                        setForm({ ...form, address: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
                     className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm resize-none min-h-[80px]"
                 />
 
-                <Button
-                    onClick={() => onUpdate(form)}
-                    className="self-end"
-                >
-                    Save Changes
-                </Button>
+                <div className="flex items-center justify-end gap-3">
+                    {status === "success" && (
+                        <span className="text-xs text-green-600">Changes saved.</span>
+                    )}
+                    {status === "error" && (
+                        <span className="text-xs text-red-500">Failed to save. Try again.</span>
+                    )}
+                    <Button onClick={handleSave} disabled={saving} className="self-end">
+                        {saving ? "Saving..." : "Save Changes"}
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     )

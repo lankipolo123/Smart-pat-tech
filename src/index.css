@@ -141,3 +141,7 @@
     @apply font-sans;
   }
 }
+
+.contain-layout {
+  contain: layout size;
+}

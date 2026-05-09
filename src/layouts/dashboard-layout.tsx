@@ -1,50 +1,34 @@
 import * as React from "react"
+import { useState, useCallback } from "react"
+import { SidebarToggle } from "@/components/sidebar-toggle-btn"
 
 type Props = {
-    sidebar: React.ReactNode
+    sidebar: (collapsed: boolean) => React.ReactNode
     children: React.ReactNode
-    title?: string
-    rightContent?: React.ReactNode
 }
 
-export default function DashboardLayout({
-    sidebar,
-    children,
-    title = "Smart Dashboard",
-    rightContent,
-}: Props) {
+export default function DashboardLayout({ sidebar, children }: Props) {
+    const [collapsed, setCollapsed] = useState(false)
+    const toggle = useCallback(() => setCollapsed(c => !c), [])
+
     return (
         <div className="flex h-screen w-full overflow-hidden">
 
             {/* SIDEBAR */}
-            <aside className="h-full shrink-0 overflow-y-auto">
-                {sidebar}
+            <aside className="relative h-full shrink-0">
+                {sidebar(collapsed)}
+
+                {/* CHEVRON — straddling the bottom border of sidebar header */}
+                <div className="absolute top-[87px] -translate-y-1/2 -right-4 z-40">
+                    <SidebarToggle collapsed={collapsed} onClick={toggle} />
+                </div>
             </aside>
 
             {/* MAIN AREA */}
-            <div className="flex flex-col flex-1 min-w-0">
-
-                {/* TOP BAR */}
-                <header className="h-16 border-b flex items-center justify-between px-4 shrink-0">
-
-                    <div className="font-medium text-sm">
-                        {title}
-                    </div>
-
-                    {rightContent && (
-                        <div className="flex items-center gap-2">
-                            {rightContent}
-                        </div>
-                    )}
-
-                </header>
-
-                {/* CONTENT */}
-                <main className="flex-1 min-h-0 overflow-auto p-4">
-                    {children}
-                </main>
-
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                {children}
             </div>
+
         </div>
     )
 }

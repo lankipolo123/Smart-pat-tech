@@ -19,11 +19,7 @@ const severityStyles: Record<NonNullable<Alert["severity"]>, string> = {
     info: "border-blue-400/50 bg-blue-400/10 text-blue-700 dark:text-blue-400",
 }
 
-const DEFAULT_ALERTS: Alert[] = [
-    { id: "1", message: "High occupancy detected on level B", severity: "warning" },
-]
-
-export function ActiveAlerts({ alerts = DEFAULT_ALERTS, onDismiss }: Props) {
+export function ActiveAlerts({ alerts = [], onDismiss }: Props) {
     const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
     const visible = alerts.filter((a) => !dismissed.has(a.id))
@@ -33,7 +29,12 @@ export function ActiveAlerts({ alerts = DEFAULT_ALERTS, onDismiss }: Props) {
         onDismiss?.(id)
     }
 
-    if (visible.length === 0) return null
+    if (visible.length === 0) return (
+        <div className="flex flex-col gap-2">
+            <p className="text-lg font-semibold">Active Alerts</p>
+            <p className="text-sm text-muted-foreground">No activity recorded today.</p>
+        </div>
+    )
 
     return (
         <div className="flex flex-col gap-2">

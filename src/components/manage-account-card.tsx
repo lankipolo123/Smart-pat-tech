@@ -29,6 +29,7 @@ export function ManageAccountCard({
     onDelete,
 }: Props) {
     const [newEmail, setNewEmail] = useState("")
+    const [emailPassword, setEmailPassword] = useState("")
     const [currentPassword, setCurrentPassword] = useState("")
     const [newPassword, setNewPassword] = useState("")
 
@@ -57,17 +58,15 @@ export function ManageAccountCard({
                     <Input
                         type="password"
                         placeholder="Confirm password"
-                        value={currentPassword}
-                        onChange={(e) =>
-                            setCurrentPassword(e.target.value)
-                        }
+                        value={emailPassword}
+                        onChange={(e) => setEmailPassword(e.target.value)}
                     />
 
                     <Button
                         onClick={() =>
                             onChangeEmail({
                                 newEmail,
-                                password: currentPassword,
+                                password: emailPassword,
                             })
                         }
                     >
@@ -82,18 +81,14 @@ export function ManageAccountCard({
                         type="password"
                         placeholder="Current password"
                         value={currentPassword}
-                        onChange={(e) =>
-                            setCurrentPassword(e.target.value)
-                        }
+                        onChange={(e) => setCurrentPassword(e.target.value)}
                     />
 
                     <Input
                         type="password"
                         placeholder="New password"
                         value={newPassword}
-                        onChange={(e) =>
-                            setNewPassword(e.target.value)
-                        }
+                        onChange={(e) => setNewPassword(e.target.value)}
                     />
 
                     <Button

@@ -1,21 +1,68 @@
-import { createContext, useContext } from "react"
+import { createContext, useContext, useState, useCallback } from "react"
 import type { ReactNode } from "react"
 
 export type AuthUser = {
+    token: string
     name: string
     email: string
     joinedAt: string | null
     lastLogin: string | null
+    photoURL?: string
 }
 
-const AuthContext = createContext<AuthUser | null>(null)
-
-export function AuthProvider({ user, children }: { user: AuthUser; children: ReactNode }) {
-    return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>
+export type AuthContextValue = AuthUser & {
+    updateUser: (data: { firstName: string; lastName: string; email: string }) => Promise<void>
+    updatePhoto: (photoURL: string) => void
 }
 
-export function useAuth(): AuthUser {
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({
+    user,
+    onUpdate,
+    onPhotoUpdate,
+    children,
+}: {
+    user: AuthUser
+    onUpdate: (data: { firstName: string; lastName: string; email: string }) => Promise<void>
+    onPhotoUpdate: (photoURL: string) => void
+    children: ReactNode
+}) {
+    return (
+        <AuthContext.Provider value={{ ...user, updateUser: onUpdate, updatePhoto: onPhotoUpdate }}>
+            {children}
+        </AuthContext.Provider>
+    )
+}
+
+export function useAuth(): AuthContextValue {
     const ctx = useContext(AuthContext)
     if (!ctx) throw new Error("useAuth must be used inside AuthProvider")
+    return ctx
+}
+
+// ─── Sidebar Context ───────────────────────────────────────────────────────────
+
+type SidebarContextValue = {
+    collapsed: boolean
+    toggle: () => void
+}
+
+const SidebarContext = createContext<SidebarContextValue | null>(null)
+
+export function SidebarProvider({ children }: { children: ReactNode }) {
+    const [collapsed, setCollapsed] = useState(false)
+    const toggle = useCallback(() => setCollapsed(c => !c), [])
+
+    return (
+        <SidebarContext.Provider value={{ collapsed, toggle }}>
+            {children}
+        </SidebarContext.Provider>
+    )
+}
+
+export function useSidebarState(): SidebarContextValue {
+    const ctx = useContext(SidebarContext)
+    if (!ctx) throw new Error("useSidebarState must be used inside SidebarProvider")
     return ctx
 }

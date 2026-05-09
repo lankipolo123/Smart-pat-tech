@@ -1,9 +1,9 @@
+import { Camera } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import {
     Avatar,
     AvatarImage,
     AvatarFallback,
-    AvatarBadge,
 } from "@/components/ui/avatar"
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
     photoURL?: string
     joinedDate?: string
     lastLogin?: string
+    onChangePhoto?: () => void
 }
 
 export function ProfileHeader({
@@ -24,6 +25,7 @@ export function ProfileHeader({
     photoURL,
     joinedDate,
     lastLogin,
+    onChangePhoto,
 }: Props) {
     const initials = displayName
         .split(" ")
@@ -36,45 +38,41 @@ export function ProfileHeader({
     return (
         <Card>
             <CardContent className="flex items-center gap-4 py-4">
-                <Avatar size="lg">
-                    <AvatarImage src={photoURL} alt={displayName} />
-                    <AvatarFallback>{initials}</AvatarFallback>
-                    <AvatarBadge
-                        className={isOnline ? "bg-green-500" : "bg-gray-400"}
-                    />
-                </Avatar>
+                <div className="relative flex-shrink-0">
+                    <Avatar size="lg">
+                        <AvatarImage src={photoURL} alt={displayName} />
+                        <AvatarFallback>{initials}</AvatarFallback>
+
+                    </Avatar>
+
+                    {onChangePhoto && (
+                        <button
+                            onClick={onChangePhoto}
+                            aria-label="Change photo"
+                            className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground ring-2 ring-background hover:bg-primary/80 transition-colors cursor-pointer"
+                        >
+                            <Camera className="size-2.5" />
+                        </button>
+                    )}
+                </div>
 
                 <div className="flex-1">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">
-                            {displayName}
-                        </h2>
-
+                        <h2 className="text-lg font-semibold">{displayName}</h2>
                         <span
                             className={`text-xs px-2 py-0.5 rounded-full ${isOnline
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-600"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-600"
                                 }`}
                         >
                             {status}
                         </span>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                        {role}
-                    </p>
-
-                    <p className="text-sm text-muted-foreground">
-                        {email}
-                    </p>
-
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Joined: {joinedDate || "—"}
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">
-                        Last login: {lastLogin || "—"}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{role}</p>
+                    <p className="text-sm text-muted-foreground">{email}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Joined: {joinedDate || "—"}</p>
+                    <p className="text-xs text-muted-foreground">Last login: {lastLogin || "—"}</p>
                 </div>
             </CardContent>
         </Card>

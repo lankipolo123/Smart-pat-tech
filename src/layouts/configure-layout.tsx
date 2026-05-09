@@ -1,5 +1,3 @@
-// layouts/configure-layout.tsx
-
 import type { ReactNode } from "react"
 
 type Props = {
@@ -19,10 +17,11 @@ export function ConfigureLayout({
 }: Props) {
     return (
         <div className="w-full h-full flex flex-col p-4 lg:p-6">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 max-w-7xl mx-auto w-full flex-1">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full flex-1">
+
                 {/* LEFT - Canvas Area */}
                 <div className="flex min-h-0">
-                    <div className="w-full max-w-2xl aspect-[4/3] bg-muted/10 rounded-xl p-4">
+                    <div className="w-full aspect-[4/3] bg-muted/10 rounded-xl p-4">
                         {canvas}
                     </div>
                 </div>
@@ -34,6 +33,7 @@ export function ConfigureLayout({
                     {videoSourcesConfiguration}
                     {zonesConfiguration}
                 </div>
+
             </div>
         </div>
     )

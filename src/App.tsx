@@ -9,21 +9,29 @@ import { SettingsPage } from "@/pages/settings"
 import ConfigurePage from "@/pages/configure"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { loginUser, registerUser, saveSession, loadSession, clearSession } from "@/services/auth"
+import DashboardLayout from "@/layouts/dashboard-layout"
+import {
+  loginUser, registerUser, saveSession, loadSession,
+  clearSession, updateProfile, uploadAvatar,
+  changeEmail, changePassword, deactivateAccount, deleteAccount,
+} from "@/services/auth"
 import { AuthProvider } from "@/contexts/auth-context"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
-
-type SessionUser = { token: string; name: string; email: string; joinedAt: string | null; lastLogin: string | null }
+type SessionUser = {
+  token: string
+  name: string
+  email: string
+  joinedAt: string | null
+  lastLogin: string | null
+  photoURL?: string
+}
 type AuthDialog = "created" | "exists" | "login-invalid" | "login-server" | null
+type AccountDialog = "email-success" | "password-success" | "deactivate-confirm" | "delete-confirm" | "account-error" | null
 
 function App() {
   const [session, setSession] = useState<SessionUser | null>(() => loadSession())
@@ -31,6 +39,8 @@ function App() {
   const [active, setActive] = useState("dashboard")
   const [loading, setLoading] = useState(false)
   const [dialog, setDialog] = useState<AuthDialog>(null)
+  const [accountDialog, setAccountDialog] = useState<AccountDialog>(null)
+  const [accountError, setAccountError] = useState<string | null>(null)
   const [pendingSession, setPendingSession] = useState<SessionUser | null>(null)
 
   const handleLogin = async (email: string, password: string) => {
@@ -59,6 +69,85 @@ function App() {
       setDialog(msg === "Email already registered" ? "exists" : "login-server")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpdateProfile = async (data: { firstName: string; lastName: string; email: string }) => {
+    if (!session) return
+    await updateProfile(session.token, data)
+    const newName = [data.firstName, data.lastName].filter(Boolean).join(" ")
+    saveSession(session.token, newName, data.email, session.joinedAt, session.lastLogin)
+    setSession((prev) => prev ? { ...prev, name: newName, email: data.email } : prev)
+  }
+
+  const handlePhotoUpdate = (photoURL: string) => {
+    localStorage.setItem("userPhotoURL", photoURL)
+    setSession((prev) => prev ? { ...prev, photoURL } : prev)
+  }
+
+  const handleUploadAvatar = async (file: File) => {
+    if (!session) return
+    const result = await uploadAvatar(session.token, file)
+    handlePhotoUpdate(result.photoURL)
+  }
+
+  const handleChangeEmail = async (data: { newEmail: string; password: string }) => {
+    if (!session) return
+    try {
+      const result = await changeEmail(session.token, data.newEmail, data.password)
+      saveSession(session.token, session.name, result.email, session.joinedAt, session.lastLogin)
+      setSession((prev) => prev ? { ...prev, email: result.email } : prev)
+      setAccountDialog("email-success")
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : "Failed to update email")
+      setAccountDialog("account-error")
+    }
+  }
+
+  const handleChangePassword = async (data: { currentPassword: string; newPassword: string }) => {
+    if (!session) return
+    try {
+      await changePassword(session.token, data.currentPassword, data.newPassword)
+      setAccountDialog("password-success")
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : "Failed to change password")
+      setAccountDialog("account-error")
+    }
+  }
+
+  const handleDeactivate = async () => {
+    setAccountDialog("deactivate-confirm")
+  }
+
+  const handleDeactivateConfirm = async () => {
+    if (!session) return
+    try {
+      await deactivateAccount(session.token)
+      clearSession()
+      setSession(null)
+      setAccountDialog(null)
+      setAuthPage("login")
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : "Failed to deactivate account")
+      setAccountDialog("account-error")
+    }
+  }
+
+  const handleDelete = async () => {
+    setAccountDialog("delete-confirm")
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!session) return
+    try {
+      await deleteAccount(session.token)
+      clearSession()
+      setSession(null)
+      setAccountDialog(null)
+      setAuthPage("login")
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : "Failed to delete account")
+      setAccountDialog("account-error")
     }
   }
 
@@ -152,34 +241,105 @@ function App() {
 
   const renderPage = () => {
     switch (active) {
-      case "dashboard":
-        return <DashboardPage />
-      case "history":
-        return <HistoryPage />
-      case "configure":
-        return <ConfigurePage />
-      case "analytics":
-        return <AnalyticsPage />
-      case "settings":
-        return <SettingsPage />
-      default:
-        return <DashboardPage />
-
+      case "dashboard": return <DashboardPage />
+      case "history": return <HistoryPage />
+      case "configure": return <ConfigurePage />
+      case "analytics": return <AnalyticsPage />
+      case "settings": return (
+        <SettingsPage
+          onUploadAvatar={handleUploadAvatar}
+          onChangeEmail={handleChangeEmail}
+          onChangePassword={handleChangePassword}
+          onDeactivate={handleDeactivate}
+          onDelete={handleDelete}
+        />
+      )
+      default: return <DashboardPage />
     }
   }
 
   return (
-    <AuthProvider user={session}>
-      <div className="flex h-screen w-full overflow-hidden">
-        <AppSidebar
-          active={active}
-          onNavigate={setActive}
-          onLogout={handleLogout}
-        />
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {renderPage()}
-        </div>
-      </div>
+    <AuthProvider
+      key={`${session?.name}-${session?.email}-${session?.photoURL}`}
+      user={session}
+      onUpdate={handleUpdateProfile}
+      onPhotoUpdate={handlePhotoUpdate}
+    >
+      <DashboardLayout
+        sidebar={(collapsed) => (
+          <AppSidebar
+            active={active}
+            onNavigate={setActive}
+            onLogout={handleLogout}
+            collapsed={collapsed}
+          />
+        )}
+      >
+        {renderPage()}
+      </DashboardLayout>
+
+      {/* ACCOUNT DIALOGS */}
+      <Dialog open={accountDialog === "email-success"} onOpenChange={() => setAccountDialog(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Email updated</DialogTitle>
+            <DialogDescription>Your email address has been changed successfully.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setAccountDialog(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accountDialog === "password-success"} onOpenChange={() => setAccountDialog(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Password changed</DialogTitle>
+            <DialogDescription>Your password has been updated successfully.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setAccountDialog(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accountDialog === "deactivate-confirm"} onOpenChange={() => setAccountDialog(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Deactivate account?</DialogTitle>
+            <DialogDescription>Your account will be deactivated. You won't be able to log in until it's reactivated.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccountDialog(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeactivateConfirm}>Deactivate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accountDialog === "delete-confirm"} onOpenChange={() => setAccountDialog(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete account?</DialogTitle>
+            <DialogDescription>This is permanent. All your data will be deleted and cannot be recovered.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccountDialog(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accountDialog === "account-error"} onOpenChange={() => setAccountDialog(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Something went wrong</DialogTitle>
+            <DialogDescription>{accountError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setAccountDialog(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthProvider>
   )
 }

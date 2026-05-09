@@ -11,17 +11,10 @@ SECRET_KEY = "smartpat-secret-key-change-in-prod"
 ALGORITHM  = "HS256"
 TOKEN_DAYS = 7
 
-# ─────────────────────────────
-# CONNECTION POOL
-# Each thread gets its own persistent SQLite connection.
-# SQLite connections must not be shared across threads, but reusing the same
-# connection within a thread eliminates the open/close overhead on every call.
-# ─────────────────────────────
 _local = threading.local()
 
 
 def _get_raw_conn() -> sqlite3.Connection:
-    """Return this thread's persistent connection, creating it if needed."""
     conn = getattr(_local, "conn", None)
     if conn is None:
         conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=10)
@@ -34,11 +27,6 @@ def _get_raw_conn() -> sqlite3.Connection:
 
 @contextmanager
 def get_conn():
-    """
-    Yield the thread-local connection wrapped in a transaction.
-    Commits on success, rolls back on any exception.
-    The connection itself is NOT closed — it stays alive for the thread's lifetime.
-    """
     conn = _get_raw_conn()
     try:
         yield conn
@@ -48,9 +36,6 @@ def get_conn():
         raise
 
 
-# ─────────────────────────────
-# PASSWORD HELPERS
-# ─────────────────────────────
 def _hash(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=10)).decode()
 
@@ -59,9 +44,6 @@ def _verify(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
-# ─────────────────────────────
-# DB INIT
-# ─────────────────────────────
 def init_db():
     with get_conn() as conn:
         conn.execute("""
@@ -71,14 +53,12 @@ def init_db():
                 email           TEXT UNIQUE NOT NULL,
                 hashed_password TEXT NOT NULL,
                 avatar_url      TEXT,
+                is_active       INTEGER DEFAULT 1,
                 created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
                 last_login      TEXT
             )
         """)
-        # Migrate older schemas that may be missing these columns.
-        # Catch only the specific "duplicate column" error, not everything.
-        for col_def in ("last_login TEXT", "avatar_url TEXT"):
-            col_name = col_def.split()[0]
+        for col_def in ("last_login TEXT", "avatar_url TEXT", "is_active INTEGER DEFAULT 1"):
             try:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col_def}")
             except sqlite3.OperationalError as e:
@@ -86,9 +66,6 @@ def init_db():
                     raise
 
 
-# ─────────────────────────────
-# TOKEN
-# ─────────────────────────────
 def _make_token(user_id: int) -> str:
     return jwt.encode(
         {"sub": str(user_id), "exp": datetime.utcnow() + timedelta(days=TOKEN_DAYS)},
@@ -97,9 +74,6 @@ def _make_token(user_id: int) -> str:
     )
 
 
-# ─────────────────────────────
-# AUTH OPERATIONS
-# ─────────────────────────────
 def register(name: str, email: str, password: str) -> dict:
     with get_conn() as conn:
         if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
@@ -122,19 +96,21 @@ def register(name: str, email: str, password: str) -> dict:
         "email":        email,
         "joined_at":    row["created_at"],
         "last_login":   row["last_login"],
+        "avatar_url":   None,
     }
 
 
 def login(email: str, password: str) -> dict:
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT id, name, hashed_password, created_at FROM users WHERE email=?",
+            "SELECT id, name, hashed_password, created_at, avatar_url, is_active FROM users WHERE email=?",
             (email,),
         ).fetchone()
         if not row or not _verify(password, row["hashed_password"]):
             raise ValueError("Invalid email or password")
+        if row["is_active"] == 0:
+            raise ValueError("Account is deactivated")
 
-        # Record login time — we already know the value, no need to SELECT it back
         now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         conn.execute(
             "UPDATE users SET last_login=? WHERE id=?",
@@ -147,6 +123,7 @@ def login(email: str, password: str) -> dict:
         "email":        email,
         "joined_at":    row["created_at"],
         "last_login":   now_iso,
+        "avatar_url":   row["avatar_url"],
     }
 
 
@@ -164,3 +141,72 @@ def get_avatar(user_id: int) -> str | None:
             "SELECT avatar_url FROM users WHERE id=?", (user_id,)
         ).fetchone()
     return row["avatar_url"] if row else None
+
+
+def update_profile(user_id: int, first_name: str, last_name: str, email: str) -> dict:
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM users WHERE email=? AND id!=?", (email, user_id)
+        ).fetchone()
+        if existing:
+            raise ValueError("Email already in use")
+        name = f"{first_name} {last_name}".strip()
+        conn.execute(
+            "UPDATE users SET name=?, email=? WHERE id=?",
+            (name, email, user_id),
+        )
+        row = conn.execute(
+            "SELECT name, email FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+    return {
+        "firstName": first_name,
+        "lastName":  last_name,
+        "email":     row["email"],
+    }
+
+
+def change_email(user_id: int, new_email: str, password: str) -> dict:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT hashed_password FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError("User not found")
+        if not _verify(password, row["hashed_password"]):
+            raise ValueError("Incorrect password")
+        existing = conn.execute(
+            "SELECT id FROM users WHERE email=? AND id!=?", (new_email, user_id)
+        ).fetchone()
+        if existing:
+            raise ValueError("Email already in use")
+        conn.execute(
+            "UPDATE users SET email=? WHERE id=?", (new_email, user_id)
+        )
+    return {"email": new_email}
+
+
+def change_password(user_id: int, current_password: str, new_password: str) -> None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT hashed_password FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError("User not found")
+        if not _verify(current_password, row["hashed_password"]):
+            raise ValueError("Incorrect current password")
+        conn.execute(
+            "UPDATE users SET hashed_password=? WHERE id=?",
+            (_hash(new_password), user_id)
+        )
+
+
+def deactivate_account(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET is_active=0 WHERE id=?", (user_id,)
+        )
+
+
+def delete_account(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
