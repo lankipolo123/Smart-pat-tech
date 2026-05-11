@@ -38,11 +38,11 @@ export function PageHeader({ title, description, extra }: Props) {
 
             {/* TITLE + DESCRIPTION */}
             <div className="flex flex-col gap-0.5">
-                <h1 className="text-3xl font-medium tracking-wide text-primary uppercase">
+                <h1 className="text-4xl font-medium tracking-wide text-primary uppercase">
                     {title}
                 </h1>
                 {description && (
-                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-sm text-secondary">{description}</p>
                 )}
             </div>
 

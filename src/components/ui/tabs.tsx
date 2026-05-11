@@ -1,4 +1,3 @@
-
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
@@ -57,8 +56,8 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       data-slot="tabs-trigger"
       className={cn(
         "relative flex-1 min-w-[100px] items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-all",
-        "bg-primary text-primary-foreground hover:bg-primary/90",
-        "data-active:bg-background data-active:text-foreground data-active:hover:bg-background",
+        "text-white/60 hover:text-white hover:bg-[color-mix(in_srgb,var(--primary)_80%,black)]",
+        "data-active:bg-background data-active:text-foreground data-active:hover:bg-background data-active:hover:text-foreground",
         className
       )}
       {...props}

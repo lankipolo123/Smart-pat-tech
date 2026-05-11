@@ -9,7 +9,7 @@ import { SettingsPage } from "@/pages/settings"
 import ConfigurePage from "@/pages/configure"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import DashboardLayout from "@/layouts/dashboard-layout"
+import DashboardLayout from "@/layouts/app-layout"
 import {
   loginUser, registerUser, saveSession, loadSession,
   clearSession, updateProfile, uploadAvatar,

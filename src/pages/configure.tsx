@@ -28,7 +28,7 @@ export default function ConfigurePage() {
     return (
         <>
             <PageHeader
-                title="Configure"
+                title="Camera Configurations"
                 description="Set up parking zones, cameras, and video sources"
             />
             <PageContent>

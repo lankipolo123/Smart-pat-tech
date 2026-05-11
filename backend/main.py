@@ -21,11 +21,10 @@ from services.detector import detection_loop
 from services.parking import init_parking_db
 from services.zones import load_zones
 
-from routers import auth, cameras, parking, websockets, zones
+from routers import auth, cameras, parking, websockets, zones, root
 
 SECRET_KEY = "smartpat-secret-key-change-in-prod"
 ALGORITHM  = "HS256"
-
 
 def _get_user_id_from_token(authorization: str | None) -> int:
     if not authorization or not authorization.startswith("Bearer "):
@@ -50,6 +49,7 @@ async def lifespan(app: FastAPI):
     if not activate_saved_source():
         S.cap = init_camera()
     threading.Thread(target=detection_loop, daemon=True).start()
+    print("\n✅ SmartPat backend is running — http://127.0.0.1:8000\n")
     yield
     with S.cap_lock:
         if S.cap:
@@ -66,13 +66,22 @@ app.add_middleware(
 )
 
 Path("uploads").mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+Path("static").mkdir(exist_ok=True)
 
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.include_router(root.router)
 app.include_router(auth.router)
 app.include_router(zones.router)
 app.include_router(cameras.router)
 app.include_router(parking.router)
 app.include_router(websockets.router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/camera/status")

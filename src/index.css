@@ -43,25 +43,21 @@
 :root {
   --radius: 0.625rem;
 
-  /* Base */
   --background: #ffffff;
   --foreground: #0f172a;
 
-  /* Surfaces */
   --card: #ffffff;
   --card-foreground: #0f172a;
 
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  /* BRAND COLORS */
   --primary: #a33738;
   --primary-foreground: #ffffff;
 
   --secondary: #75777a;
   --secondary-foreground: #ffffff;
 
-  /* UI STATES */
   --muted: #f3f4f6;
   --muted-foreground: #6b7280;
 
@@ -70,12 +66,10 @@
 
   --destructive: #ef4444;
 
-  /* STRUCTURE */
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #2596be;
 
-  /* CHART COLORS */
   --chart-1: #2596be;
   --chart-2: #a33738;
   --chart-3: #22c55e;
@@ -93,7 +87,6 @@
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
 
-  /* BRAND COLORS (keep same for consistency) */
   --primary: #2596be;
   --primary-foreground: #ffffff;
 
@@ -112,7 +105,6 @@
   --input: #334155;
   --ring: #2596be;
 
-  /* CHART COLORS */
   --chart-1: #38bdf8;
   --chart-2: #f87171;
   --chart-3: #4ade80;
@@ -120,7 +112,6 @@
   --chart-5: #a78bfa;
 }
 
-/* BASE STYLES */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -139,6 +130,11 @@
 
   html {
     @apply font-sans;
+  }
+
+  * {
+    scrollbar-color: var(--primary) transparent;
+    scrollbar-width: auto;
   }
 }
 

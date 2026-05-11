@@ -96,7 +96,7 @@ export function SettingsPage({
 
     return (
         <>
-            <PageHeader title="Settings" description="Manage your account" />
+            <PageHeader title="Account Settings" description="Manage your account" />
             <PageContent>
                 <SettingsLayout
                     one={

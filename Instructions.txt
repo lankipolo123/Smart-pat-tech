@@ -7,11 +7,11 @@ at the terminal also add a new terminal(cmd)
 and run 
 
 
-CAMERA_IP=192.168.1.14
+CAMERA_IP=192.168.1.13
 RTSP_PORT=554
 RTSP_USER=admin
 RTSP_PASSWORD=admin123
-RTSP_URL=rtsp://admin:admin123@192.168.1.14:8554/live/ch00_0
+RTSP_URL=rtsp://admin:admin123@192.168.1.13:554/live/ch00_0
 RTSP_TRANSPORT=tcp
 
 
@@ -26,7 +26,7 @@ RTSP_USER=admin
 RTSP_PASSWORD=your_security_code
 
 # ── STEP 3: Build your RTSP URL using the values above ──
-RTSP_URL=rtsp://admin:your_security_code@your_camera_ip:554/live/ch0
+RTSP_URL=rtsp://admin:admin123@192.168.1.13:8899/live/ch00_0
 
 # ── STEP 4: Run test.py to confirm the URL works ──
 # In your terminal: python test.py

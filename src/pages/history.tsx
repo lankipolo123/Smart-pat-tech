@@ -10,19 +10,20 @@ import { HistoryTable } from "@/components/history-table"
 import { ExportDialog } from "@/components/export-dialog"
 
 import { type ParkingRange } from "@/configs/parking-range.config"
+import { createSessionExportConfig } from "@/utils/session-export-utils"
 
 export function HistoryPage() {
     const [range, setRange] = useState<ParkingRange>("today")
 
     return (
         <>
-            <PageHeader title="Parking Management" description="Monitor occupancy, revenue, and vehicle activity" />
+            <PageHeader title="Parking History Records" description="Monitor occupancy, revenue, and vehicle activity" />
             <PageContent>
                 <HistoryLayout
                     tabs={<RangeTabs range={range} onRangeChange={setRange} />}
                     stats={<HistoryStats range={range} />}
                     table={<HistoryTable range={range} />}
-                    tableActions={<ExportDialog range={range} />}
+                    tableActions={<ExportDialog config={createSessionExportConfig(range)} />}
                 />
             </PageContent>
         </>

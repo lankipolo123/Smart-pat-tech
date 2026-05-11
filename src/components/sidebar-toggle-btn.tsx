@@ -9,7 +9,7 @@ export function SidebarToggle({ collapsed, onClick }: Props) {
     return (
         <button
             onClick={onClick}
-            className="group flex items-center justify-center w-8 h-8 rounded-full border-2 border-primary bg-background shadow-sm hover:bg-primary hover:border-primary transition-colors"
+            className="group flex items-center justify-center w-8 h-8 rounded-full border-3 border-primary bg-background shadow-sm hover:bg-secondary hover:border-primary transition-colors"
         >
             <ChevronRight
                 strokeWidth={2.5}

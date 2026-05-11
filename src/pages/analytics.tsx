@@ -5,16 +5,17 @@ import { AnalyticsStats } from "@/components/analytics-stats"
 import { AnalyticsCharts } from "@/components/analytics-charts"
 import { AnalyticsActivityChart } from "@/components/analytics-activity-chart"
 import { ExportDialog } from "@/components/export-dialog"
+import { createAnalyticsExportConfig } from "@/utils/analytics-export.config"
 
 export function AnalyticsPage() {
     return (
         <>
-            <PageHeader title="Analytics" description="Track revenue, vehicles, and parking performance" />
+            <PageHeader title="Statistical Content" description="Track revenue, vehicles, and parking performance" />
             <PageContent>
                 <AnalyticsLayout
                     stats={<AnalyticsStats />}
                     charts={<AnalyticsCharts />}
-                    actions={<ExportDialog range="all" />}
+                    actions={<ExportDialog config={createAnalyticsExportConfig()} />}
                     activity={<AnalyticsActivityChart />}
                 />
             </PageContent>

@@ -3,12 +3,11 @@ import { PageContent } from "@/components/page-content"
 import { PageHeader } from "@/components/page-header"
 import { DashboardContentLayout } from "@/layouts/dashboard-content-layout"
 import { DashboardCCTVFeedCard } from "@/components/DashboardCCTVFeedCard"
-import { ActiveAlerts, type Alert } from "@/components/active-alerts"
+import { TodayActivity } from "@/components/today-activity"
 import { ParkingSummary } from "@/components/parking-summary"
 import { DashboardSlotsGrid } from "@/components/DashboardSlotsGrid"
 import { BackendStatus } from "@/components/backend-status"
 import { useCameraState } from "@/hooks/useCameraState"
-import { fetchSessions } from "@/services/parking"
 import { type Zone } from "@/services/camera"
 
 type Point = [number, number]
@@ -17,16 +16,10 @@ function nextBackoff(current: number): number {
     return Math.min(current * 2, 30_000)
 }
 
-function formatTime(isoStr: string): string {
-    const d = new Date(isoStr)
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
-
 export function DashboardPage() {
     const cameraHook = useCameraState()
 
     const [zones, setZones] = useState<Zone[]>([])
-    const [alerts, setAlerts] = useState<Alert[]>([])
     const [backendStatus, setBackendStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting')
     const [retryCount, setRetryCount] = useState(0)
 
@@ -34,28 +27,6 @@ export function DashboardPage() {
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const wsRef = useRef<WebSocket | null>(null)
     const unmountedRef = useRef(false)
-
-    useEffect(() => {
-        fetchSessions("today").then((sessions) => {
-            const mapped: Alert[] = sessions
-                .slice(0, 5)
-                .map((s) => {
-                    if (s.exit === null) {
-                        return {
-                            id: `session-${s.id}`,
-                            message: `Slot ${s.slot} — Vehicle entered at ${formatTime(s.entry)}`,
-                            severity: "info" as const,
-                        }
-                    }
-                    return {
-                        id: `session-${s.id}`,
-                        message: `Slot ${s.slot} — Vehicle exited at ${formatTime(s.exit!)} (${s.durationMin} min)`,
-                        severity: "warning" as const,
-                    }
-                })
-            setAlerts(mapped)
-        })
-    }, [])
 
     const clearRetryTimer = () => {
         if (retryTimerRef.current !== null) {
@@ -142,7 +113,7 @@ export function DashboardPage() {
     return (
         <>
             <PageHeader
-                title="Dashboard"
+                title=" Dashboard"
                 description="Real-time occupancy monitoring"
                 extra={
                     <BackendStatus
@@ -171,7 +142,7 @@ export function DashboardPage() {
                             }
                         />
                     }
-                    alerts={<ActiveAlerts alerts={alerts} />}
+                    alerts={<TodayActivity />}
                     summary={
                         <ParkingSummary
                             data={{

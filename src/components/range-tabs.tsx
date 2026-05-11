@@ -11,7 +11,7 @@ export function RangeTabs({ range, onRangeChange }: Props) {
         <Tabs value={range} onValueChange={(v) => onRangeChange(v as ParkingRange)}>
             <TabsList>
                 {parkingRanges.map((r) => (
-                    <TabsTrigger key={r.key} value={r.key}>
+                    <TabsTrigger key={r.key} value={r.key} className="hover:bg-secondary">
                         {r.label}
                     </TabsTrigger>
                 ))}

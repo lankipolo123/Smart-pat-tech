@@ -11,7 +11,7 @@ export function DashboardSlotsGrid({ slots }: DashboardSlotsGridProps) {
     const free = slots.length - occupied
 
     return (
-        <Card className="shadow-md border-0 bg-background/95 backdrop-blur-sm">
+        <Card className="h-full shadow-md border-0 bg-background/95 backdrop-blur-sm">
             <CardHeader className="py-4 px-4 border-b bg-muted/20">
                 <div className="flex items-center justify-between">
                     <div>
@@ -37,34 +37,36 @@ export function DashboardSlotsGrid({ slots }: DashboardSlotsGridProps) {
             </CardHeader>
 
             <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {slots.map((slot) => (
-                        <div 
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+                    {slots.length === 0 ? (
+                        <p className="col-span-full text-center text-xs text-muted-foreground py-6">
+                            No slots configured yet.
+                        </p>
+                    ) : slots.map((slot) => (
+                        <div
                             key={slot.id}
                             className={`
                                 p-3 rounded-lg border-2 transition-all duration-200
-                                ${slot.occupied 
-                                    ? 'bg-red-50 border-red-200 hover:bg-red-100' 
-                                    : 'bg-green-50 border-green-200 hover:bg-green-100'
+                                ${slot.occupied
+                                    ? "bg-red-50 border-red-200 hover:bg-red-100"
+                                    : "bg-green-50 border-green-200 hover:bg-green-100"
                                 }
                             `}
                         >
                             <div className="flex items-center justify-between mb-2">
-                                <span className="font-semibold text-sm">
-                                    {slot.slot}
-                                </span>
-                                <Badge 
+                                <span className="font-semibold text-sm">{slot.slot}</span>
+                                <Badge
                                     variant={slot.occupied ? "destructive" : "default"}
                                     className="text-xs"
                                 >
                                     {slot.occupied ? "Occupied" : "Available"}
                                 </Badge>
                             </div>
-                            
+
                             <div className="text-xs text-muted-foreground">
                                 Zone ID: {slot.id}
                             </div>
-                            
+
                             {slot.occupied && (
                                 <div className="text-xs text-red-600 font-medium">
                                     Vehicle Detected
