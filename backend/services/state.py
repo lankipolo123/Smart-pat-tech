@@ -27,11 +27,11 @@ zones_cache: list[dict] = []
 zones_lock = threading.Lock()
 
 # ── websocket clients ─────────────────────────────────────────────────────────
-zone_ws_clients:  set[WebSocket] = set()
-zone_ws_lock      = threading.Lock()
+zone_ws_clients: set[WebSocket] = set()
+zone_ws_lock = threading.Lock()
 
 video_ws_clients: set[WebSocket] = set()
-video_ws_lock     = threading.Lock()
+video_ws_lock = threading.Lock()
 
 # ── event loop (assigned in lifespan) ────────────────────────────────────────
 _main_loop: asyncio.AbstractEventLoop | None = None

@@ -1,5 +1,8 @@
-const API = "http://localhost:8000"
+import { fetchJsonWithTimeout, withTimeout } from "@/services/request"
 
+const FASTAPI_BASE = "http://localhost:8000"
+
+// ── Types (identical shapes to before) ───────────────────────────────────────
 export type SlotStatus = "available" | "occupied" | "reserved"
 
 export type ParkingSlot = {
@@ -32,44 +35,44 @@ export type ParkingStats = {
 
 export async function fetchSlots(): Promise<ParkingSlot[]> {
     try {
-        const r = await fetch(`${API}/parking/slots`)
-        if (!r.ok) return []
-        return r.json()
-    } catch { return [] }
+        return await fetchJsonWithTimeout<ParkingSlot[]>(
+            `${FASTAPI_BASE}/parking/slots`,
+            "Parking slots",
+            3_000,
+        )
+    } catch (error) {
+        console.warn("[parking] Failed to fetch slots", error)
+        return []
+    }
 }
 
+// ── Sessions — Supabase ───────────────────────────────────────────────────────
 export async function fetchSessions(range: string): Promise<SessionRecord[]> {
-    try {
-        const r = await fetch(`${API}/parking/sessions?range=${range}`)
-        if (!r.ok) return []
-        const rows = await r.json()
-        return rows.map((s: Record<string, unknown>) => ({
-            id:          s.id,
-            slot:        s.slot,
-            plate:       s.plate,
-            entry:       s.entry,
-            exit:        s.exit ?? null,
-            durationMin: s.duration_min ?? null,
-            bill:        s.bill ?? null,
-        }))
-    } catch { return [] }
+    const rows = await withTimeout(
+        fetchJsonWithTimeout<Array<SessionRecord & { duration_min?: number | null }>>(
+            `${FASTAPI_BASE}/parking/sessions?range=${encodeURIComponent(range)}`,
+            "Parking sessions",
+        ),
+        "Parking sessions",
+    )
+
+    return rows.map((s) => ({
+        id: s.id,
+        slot: s.slot,
+        plate: s.plate,
+        entry: s.entry,
+        exit: s.exit ?? null,
+        durationMin: s.durationMin ?? s.duration_min ?? null,
+        bill: s.bill ?? null,
+    }))
 }
 
 export async function fetchParkingStats(range: string): Promise<ParkingStats | null> {
-    try {
-        const r = await fetch(`${API}/parking/stats?range=${range}`)
-        if (!r.ok) return null
-        const row = await r.json()
-        return {
-            totalSessions: row.totalSessions ?? row.total_sessions ?? 0,
-            totalRevenue: row.totalRevenue ?? row.total_revenue ?? 0,
-            avgDuration: row.avgDuration ?? row.avg_duration_min ?? 0,
-            avgCharge: row.avgCharge ?? (
-                row.total_sessions ? row.total_revenue / row.total_sessions : 0
-            ),
-            occupancyCurrent: row.occupancyCurrent ?? row.occupied_now ?? 0,
-            occupancyTotal: row.occupancyTotal ?? row.total_zones ?? 0,
-            vehicleTurnover: row.vehicleTurnover ?? 0,
-        }
-    } catch { return null }
+    return withTimeout(
+        fetchJsonWithTimeout<ParkingStats>(
+            `${FASTAPI_BASE}/parking/stats?range=${encodeURIComponent(range)}`,
+            "Parking stats",
+        ),
+        "Parking stats",
+    )
 }

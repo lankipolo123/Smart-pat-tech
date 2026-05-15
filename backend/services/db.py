@@ -1,17 +1,28 @@
 """
 services/db.py
-DB init, migrations, seeding, and camera config helpers.
+DB init for zones, cameras, video_sources only.
+Parking sessions and users are now handled by Supabase.
 """
 
 import json
+from datetime import datetime, timedelta
 
 from services.auth import get_conn
 from services.config import get_env_rtsp_seed
 
 
 def _safe_add_column(conn, table: str, column: str, col_def: str):
-    existing = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in existing:
+    existing = conn.execute(
+        """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+        """,
+        (table, column),
+    ).fetchone()
+    if not existing:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
         print(f"[DB] Migrated: added '{column}' to '{table}'")
 
@@ -20,54 +31,94 @@ def init_db():
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS zones (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                slot       TEXT UNIQUE,
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                slot       VARCHAR(64) UNIQUE,
                 points     TEXT,
-                zone_type  TEXT DEFAULT 'parking',
-                occupied   INTEGER DEFAULT 0,
-                entry_time TEXT
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS parking_sessions (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                slot         TEXT,
-                plate        TEXT NOT NULL DEFAULT 'UNKNOWN',
-                entry        TEXT,
-                exit         TEXT,
-                duration_min INTEGER,
-                bill         REAL
+                zone_type  VARCHAR(32) DEFAULT 'parking',
+                occupied   TINYINT DEFAULT 0,
+                entry_time DATETIME NULL
             )
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS video_sources (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                name      TEXT NOT NULL,
-                type      TEXT NOT NULL,
+                id        INT AUTO_INCREMENT PRIMARY KEY,
+                name      VARCHAR(255) NOT NULL,
+                type      VARCHAR(64) NOT NULL,
                 url       TEXT NOT NULL,
-                active    INTEGER DEFAULT 0,
-                camera_id INTEGER
+                active    TINYINT DEFAULT 0,
+                camera_id INT NULL
             )
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS cameras (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                name        TEXT,
-                camera_type TEXT NOT NULL,
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(255),
+                camera_type VARCHAR(64) NOT NULL,
                 config      TEXT,
-                created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
-                is_active   INTEGER DEFAULT 1
+                created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                is_active   TINYINT DEFAULT 1
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS parking_sessions (
+                id           INT AUTO_INCREMENT PRIMARY KEY,
+                slot         VARCHAR(64) NOT NULL,
+                plate        VARCHAR(64) NOT NULL,
+                entry        DATETIME NOT NULL,
+                exit         DATETIME NULL,
+                duration_min INT NULL,
+                bill         DECIMAL(10,2) NULL,
+                created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_parking_sessions_entry (entry),
+                INDEX idx_parking_sessions_slot (slot)
             )
         """)
         for table, col, defn in [
-            ("zones",            "zone_type",  "TEXT DEFAULT 'parking'"),
-            ("zones",            "occupied",   "INTEGER DEFAULT 0"),
-            ("zones",            "entry_time", "TEXT"),
-            ("video_sources",    "camera_id",  "INTEGER"),
-            ("parking_sessions", "plate",      "TEXT DEFAULT 'UNKNOWN'"),
+            ("zones",         "zone_type",  "VARCHAR(32) DEFAULT 'parking'"),
+            ("zones",         "occupied",   "TINYINT DEFAULT 0"),
+            ("zones",         "entry_time", "DATETIME NULL"),
+            ("video_sources", "camera_id",  "INT NULL"),
         ]:
             _safe_add_column(conn, table, col, defn)
+        _seed_parking_sessions(conn)
+
+
+def _seed_parking_sessions(conn):
+    if conn.execute("SELECT COUNT(*) AS count FROM parking_sessions").fetchone()[0] > 0:
+        return
+
+    now = datetime.now().replace(second=0, microsecond=0)
+
+    def row(slot: str, plate: str, days: int, hour: int, minute: int, duration: int):
+        entry = (now - timedelta(days=days)).replace(hour=hour, minute=minute)
+        exit_time = entry + timedelta(minutes=duration)
+        return (slot, plate, entry, exit_time, duration, round(duration * 1.5, 2))
+
+    samples = [
+        row("A1", "ABC 1234", 0, 8, 10, 55),
+        row("A2", "XYZ 5678", 0, 9, 20, 40),
+        row("B1", "DEF 9012", 0, 10, 15, 75),
+        row("B2", "GHI 3456", 1, 7, 45, 60),
+        row("A3", "JKL 7890", 1, 13, 20, 90),
+        row("C1", "MNO 1122", 2, 8, 30, 120),
+        row("C2", "PQR 3344", 3, 11, 10, 45),
+        row("A1", "STU 5566", 4, 14, 0, 70),
+        row("B3", "VWX 7788", 5, 16, 25, 85),
+        row("A2", "YZA 8989", 6, 9, 5, 50),
+        row("C3", "BCD 1010", 10, 12, 15, 110),
+        row("B1", "EFG 2020", 15, 15, 45, 95),
+        row("A4", "HIJ 3030", 22, 8, 5, 65),
+        row("B4", "KLM 4040", 29, 17, 0, 120),
+    ]
+
+    conn.executemany(
+        """
+        INSERT INTO parking_sessions (slot, plate, entry, exit, duration_min, bill)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        samples,
+    )
 
 
 # ── camera config helpers ─────────────────────────────────────────────────────

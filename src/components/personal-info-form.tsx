@@ -77,7 +77,8 @@ export function PersonalInfoForm({ userInfo, onUpdate }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                     <Input
                         placeholder="Email"
-                        value={form.email}
+                        value={form.email} disabled
+                        className="opacity-50 cursor-not-allowed"
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                     />
                     <Input

@@ -1,6 +1,12 @@
 """
 services/zones.py
 Zone cache management and WebSocket broadcasting.
+
+Fixes applied:
+  - broadcast_zones: snapshot clients BEFORE awaiting — never hold
+    threading.Lock across an await (causes deadlock / RuntimeError).
+  - notify_zones_changed: read zone_ws_clients under the lock to avoid
+    "Set changed size during iteration" RuntimeError.
 """
 
 import asyncio
@@ -41,9 +47,22 @@ async def _safe_send_text(ws: WebSocket, data: str) -> bool:
 async def broadcast_zones():
     with S.zones_lock:
         payload = json.dumps(S.zones_cache)
+
+    # FIX: snapshot the set under the lock, then release BEFORE any await.
+    # Holding a threading.Lock across await suspends the coroutine while the
+    # lock is still held, which deadlocks any other thread trying to acquire it.
     with S.zone_ws_lock:
-        dead = {ws for ws in S.zone_ws_clients if not await _safe_send_text(ws, payload)}
-        S.zone_ws_clients.difference_update(dead)
+        clients = set(S.zone_ws_clients)
+
+    dead = set()
+    for ws in clients:
+        ok = await _safe_send_text(ws, payload)
+        if not ok:
+            dead.add(ws)
+
+    if dead:
+        with S.zone_ws_lock:
+            S.zone_ws_clients.difference_update(dead)
 
 
 def _schedule(coro):
@@ -52,7 +71,12 @@ def _schedule(coro):
 
 
 def notify_zones_changed():
-    if S.zone_ws_clients:
+    # FIX: read zone_ws_clients under the lock — without it another thread
+    # can remove a client between the bool() check and the actual iteration
+    # inside broadcast_zones, causing "Set changed size during iteration".
+    with S.zone_ws_lock:
+        has_clients = bool(S.zone_ws_clients)
+    if has_clients:
         _schedule(broadcast_zones())
 
 

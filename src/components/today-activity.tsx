@@ -10,26 +10,37 @@ import { fetchSessions, type SessionRecord } from "@/services/parking"
 import { formatDateTime } from "@/utils/table-utils"
 import { StatusBadge } from "@/components/status-badge"
 import { ReceiptDialog } from "@/components/receipt-dialog"
-import { mockSessions } from "@/mock-data/mock-sessions"
-
-const USE_MOCK = true // flip to false when backend is ready
+import { mockSessions } from "@/mocks/mock-sessions"
 
 const MAX_ROWS = 8
 const POLL_INTERVAL = 15_000
 
 export function TodayActivity() {
-    const [sessions, setSessions] = useState<SessionRecord[]>(
-        USE_MOCK ? mockSessions : []
-    )
+    const [sessions, setSessions] = useState<SessionRecord[]>(mockSessions)
+    const [usingFallback, setUsingFallback] = useState(true)
 
     useEffect(() => {
-        if (USE_MOCK) return
-
         let cancelled = false
 
         async function load() {
-            const data = await fetchSessions("today")
-            if (!cancelled) setSessions(data)
+            try {
+                const data = await fetchSessions("today")
+                if (cancelled) return
+
+                if (data.length > 0) {
+                    setSessions(data)
+                    setUsingFallback(false)
+                } else {
+                    setSessions(mockSessions)
+                    setUsingFallback(true)
+                }
+            } catch (error) {
+                console.warn("[today-activity] Using display fallback", error)
+                if (!cancelled) {
+                    setSessions(mockSessions)
+                    setUsingFallback(true)
+                }
+            }
         }
 
         load()
@@ -47,7 +58,7 @@ export function TodayActivity() {
                     Latest vehicle sessions&nbsp;
                     {sessions.length > 0 && (
                         <span className="text-xs text-muted-foreground">
-                            — {sessions.length} total today
+                            {usingFallback ? "- display sample" : `- ${sessions.length} total today`}
                         </span>
                     )}
                 </CardDescription>

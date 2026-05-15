@@ -37,31 +37,30 @@ export function useCameraState() {
 
     const reloadStatus = useCallback(async () => {
         const status = await fetchCameraStatus()
-        setCameraStatus(status)
-        if (!status) {
-            setConnectionState("disconnected")
-            return
-        }
-        if (status.simulation_mode) {
-            setConnectionState("disconnected")
-            return
-        }
-        if (status.connected) {
-            setConnectionState("live")
-            return
-        }
-        if (status.opened) {
-            setConnectionState("connecting")
-            return
-        }
-        setConnectionState("disconnected")
+
+        // Only update cameraStatus state if the value actually changed —
+        // prevents unnecessary re-renders from the 2s polling interval.
+        setCameraStatus(prev =>
+            JSON.stringify(prev) === JSON.stringify(status) ? prev : status
+        )
+
+        const next: CameraConnectionState = !status
+            ? "disconnected"
+            : status.simulation_mode
+                ? "disconnected"
+                : status.connected
+                    ? "live"
+                    : status.opened
+                        ? "connecting"
+                        : "disconnected"
+
+        // Only update connectionState if it actually changed.
+        setConnectionState(prev => prev === next ? prev : next)
     }, [])
 
     useEffect(() => {
         reloadStatus()
-        const timer = setInterval(() => {
-            reloadStatus()
-        }, 2000)
+        const timer = setInterval(reloadStatus, 2000)
         return () => clearInterval(timer)
     }, [reloadStatus])
 

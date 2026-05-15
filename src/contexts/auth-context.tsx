@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useMemo } from "react"
 import type { ReactNode } from "react"
 
 export type AuthUser = {
@@ -28,8 +28,17 @@ export function AuthProvider({
     onPhotoUpdate: (photoURL: string) => void
     children: ReactNode
 }) {
+    // Memoize the context value so consumers only re-render when user
+    // identity, onUpdate, or onPhotoUpdate actually change — not on
+    // every parent render.
+    const value = useMemo<AuthContextValue>(() => ({
+        ...user,
+        updateUser: onUpdate,
+        updatePhoto: onPhotoUpdate,
+    }), [user, onUpdate, onPhotoUpdate])
+
     return (
-        <AuthContext.Provider value={{ ...user, updateUser: onUpdate, updatePhoto: onPhotoUpdate }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     )

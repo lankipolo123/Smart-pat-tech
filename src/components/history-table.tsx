@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+
+import {
+    Card, CardContent, CardHeader,
+    CardTitle, CardDescription,
+} from "@/components/ui/card"
 import {
     Table, TableHeader, TableBody, TableHead,
     TableRow, TableCell,
@@ -8,27 +12,27 @@ import {
     Pagination, PaginationContent, PaginationItem,
     PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination"
-import { fetchSessions, type SessionRecord } from "@/services/parking"
-import { type ParkingRange } from "@/configs/parking-range.config"
+
+import { type SessionRecord } from "@/services/parking"
 import { formatDateTime, formatDuration, buildPageNumbers } from "@/utils/table-utils"
 import { StatusBadge } from "@/components/status-badge"
 
-type Props = { range: ParkingRange }
+type Props = {
+    sessions: SessionRecord[]
+    loading: boolean
+}
 
 const PAGE_SIZE = 10
 
-export function HistoryTable({ range }: Props) {
-    const [sessions, setSessions] = useState<SessionRecord[]>([])
+export function HistoryTable({ sessions, loading }: Props) {
     const [page, setPage] = useState(1)
 
     useEffect(() => {
-        fetchSessions(range).then(setSessions)
         setPage(1)
-    }, [range])
+    }, [sessions])
 
     const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE))
     const paginated = sessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
     const rangeStart = sessions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
     const rangeEnd = Math.min(page * PAGE_SIZE, sessions.length)
 
@@ -38,7 +42,7 @@ export function HistoryTable({ range }: Props) {
     }
 
     return (
-        <Card>
+        <Card className={`transition-opacity duration-150 ${loading ? "opacity-50" : "opacity-100"}`}>
             <CardHeader>
                 <CardTitle>Session Logs</CardTitle>
                 <CardDescription>
@@ -50,6 +54,7 @@ export function HistoryTable({ range }: Props) {
                     )}
                 </CardDescription>
             </CardHeader>
+
             <CardContent className="p-0">
                 <Table>
                     <TableHeader>
@@ -62,6 +67,7 @@ export function HistoryTable({ range }: Props) {
                             <TableHead className="px-4">Status</TableHead>
                         </TableRow>
                     </TableHeader>
+
                     <TableBody>
                         {paginated.length === 0 ? (
                             <TableRow>
@@ -88,7 +94,9 @@ export function HistoryTable({ range }: Props) {
                                         ? <span className="text-green-600 font-medium text-xs">Ongoing</span>
                                         : s.bill !== null ? `₱${s.bill.toFixed(2)}` : "—"}
                                 </TableCell>
-                                <TableCell className="px-4"><StatusBadge session={s} /></TableCell>
+                                <TableCell className="px-4">
+                                    <StatusBadge session={s} />
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -97,8 +105,13 @@ export function HistoryTable({ range }: Props) {
                 {totalPages > 1 && (
                     <div className="border-t px-4 py-3 flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">
-                            Showing <span className="font-medium text-foreground">{rangeStart}–{rangeEnd}</span> of <span className="font-medium text-foreground">{sessions.length}</span> records
+                            Showing{" "}
+                            <span className="font-medium text-foreground">{rangeStart}–{rangeEnd}</span>
+                            {" "}of{" "}
+                            <span className="font-medium text-foreground">{sessions.length}</span>
+                            {" "}records
                         </p>
+
                         <Pagination className="mx-0 w-auto">
                             <PaginationContent>
                                 <PaginationItem>

@@ -1,39 +1,118 @@
-import sqlite3
-import threading
+import os
 import bcrypt
+import pymysql
 from jose import jwt
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
 
-DB_PATH    = Path(__file__).parent.parent / "smartpat.db"
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
 SECRET_KEY = "smartpat-secret-key-change-in-prod"
 ALGORITHM  = "HS256"
 TOKEN_DAYS = 7
+MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+MYSQL_USER = os.getenv("MYSQL_USER", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "smartpat")
 
-_local = threading.local()
+
+class Row(dict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
 
 
-def _get_raw_conn() -> sqlite3.Connection:
-    conn = getattr(_local, "conn", None)
-    if conn is None:
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=10)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        _local.conn = conn
-    return conn
+class CursorAdapter:
+    def __init__(self, cursor):
+        self.cursor = cursor
+
+    @property
+    def lastrowid(self):
+        return self.cursor.lastrowid
+
+    def execute(self, sql: str, params=()):
+        self.cursor.execute(sql.replace("?", "%s"), params)
+        return self
+
+    def executemany(self, sql: str, params):
+        self.cursor.executemany(sql.replace("?", "%s"), params)
+        return self
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        return Row(row) if row else None
+
+    def fetchall(self):
+        return [Row(row) for row in (self.cursor.fetchall() or [])]
+
+
+class ConnAdapter:
+    def __init__(self, conn):
+        self.conn = conn
+        self.cursor = CursorAdapter(conn.cursor())
+
+    def execute(self, sql: str, params=()):
+        return self.cursor.execute(sql, params)
+
+    def executemany(self, sql: str, params):
+        return self.cursor.executemany(sql, params)
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.cursor.cursor.close()
+        self.conn.close()
+
+
+def ensure_database():
+    conn = pymysql.connect(
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        charset="utf8mb4",
+        autocommit=True,
+    )
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}` "
+                "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            )
+    finally:
+        conn.close()
 
 
 @contextmanager
 def get_conn():
-    conn = _get_raw_conn()
+    ensure_database()
+    raw = pymysql.connect(
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        database=MYSQL_DATABASE,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+    )
+    conn = ConnAdapter(raw)
     try:
         yield conn
         conn.commit()
     except Exception:
         conn.rollback()
         raise
+    finally:
+        conn.close()
 
 
 def _hash(password: str) -> str:
@@ -48,22 +127,16 @@ def init_db():
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                name            TEXT NOT NULL,
-                email           TEXT UNIQUE NOT NULL,
-                hashed_password TEXT NOT NULL,
+                id              INT AUTO_INCREMENT PRIMARY KEY,
+                name            VARCHAR(255) NOT NULL,
+                email           VARCHAR(255) UNIQUE NOT NULL,
+                hashed_password VARCHAR(255) NOT NULL,
                 avatar_url      TEXT,
-                is_active       INTEGER DEFAULT 1,
-                created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
-                last_login      TEXT
+                is_active       TINYINT DEFAULT 1,
+                created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login      DATETIME NULL
             )
         """)
-        for col_def in ("last_login TEXT", "avatar_url TEXT", "is_active INTEGER DEFAULT 1"):
-            try:
-                conn.execute(f"ALTER TABLE users ADD COLUMN {col_def}")
-            except sqlite3.OperationalError as e:
-                if "duplicate column" not in str(e).lower():
-                    raise
 
 
 def _make_token(user_id: int) -> str:
@@ -79,8 +152,7 @@ def register(name: str, email: str, password: str) -> dict:
         if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
             raise ValueError("Email already registered")
         cur = conn.execute(
-            """INSERT INTO users (name, email, hashed_password, last_login)
-               VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%S', 'now'))""",
+            "INSERT INTO users (name, email, hashed_password, last_login) VALUES (?, ?, ?, NOW())",
             (name, email, _hash(password)),
         )
         user_id = cur.lastrowid
@@ -111,7 +183,7 @@ def login(email: str, password: str) -> dict:
         if row["is_active"] == 0:
             raise ValueError("Account is deactivated")
 
-        now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         conn.execute(
             "UPDATE users SET last_login=? WHERE id=?",
             (now_iso, row["id"]),

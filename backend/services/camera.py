@@ -1,6 +1,15 @@
 """
 services/camera.py
 All camera / capture logic: RTSP helpers, USB, simulation frame, switching.
+
+Fixes applied:
+  - _open_rtsp: cancelled flag prevents leaked VideoCapture when the open
+    thread times out — previously the thread kept running and held a cap
+    object that was never released, slowly exhausting file descriptors.
+  - switch_capture: removed nested lock acquisition (cap_lock + source_lock
+    together, then cap_lock alone calling set_source which re-takes
+    source_lock). Now cap_lock and source_lock are always acquired separately
+    and in a consistent order to prevent deadlock.
 """
 
 import os
@@ -43,6 +52,10 @@ def make_sim_frame() -> bytes:
 # ── RTSP helpers ──────────────────────────────────────────────────────────────
 def _open_rtsp(url: str) -> cv2.VideoCapture | None:
     result: list[cv2.VideoCapture | None] = [None]
+    # FIX: cancelled flag signals the thread to release the cap if we already
+    # timed out and moved on — previously the thread kept the cap object alive
+    # indefinitely, leaking file descriptors on every failed reconnect attempt.
+    cancelled = threading.Event()
 
     def _try():
         if url.lower().startswith("rtsp://"):
@@ -51,9 +64,12 @@ def _open_rtsp(url: str) -> cv2.VideoCapture | None:
         c.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, RTSP_OPEN_TIMEOUT_MS)
         c.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC,  RTSP_READ_TIMEOUT_MS)
         c.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if cancelled.is_set():
+            c.release()
+            return
         if c.isOpened():
             ret, _ = c.read()
-            if ret:
+            if ret and not cancelled.is_set():
                 result[0] = c
                 return
         c.release()
@@ -62,6 +78,7 @@ def _open_rtsp(url: str) -> cv2.VideoCapture | None:
     t.start()
     t.join(timeout=RTSP_THREAD_TIMEOUT_S)
     if t.is_alive():
+        cancelled.set()  # FIX: tell the thread to clean up when it finishes
         print(f"[RTSP] Open timed out after {RTSP_THREAD_TIMEOUT_S}s: {url}")
         return None
     if result[0] is None:
@@ -120,6 +137,7 @@ def open_capture(source_type: str, url: str) -> cv2.VideoCapture | None:
 
 # ── set source helper ─────────────────────────────────────────────────────────
 def set_source(src_type: str, url: str, camera_id=None):
+    # Always acquire source_lock alone — never call this while holding cap_lock
     with S.source_lock:
         S.current_source["type"]      = src_type
         S.current_source["url"]       = url
@@ -128,33 +146,51 @@ def set_source(src_type: str, url: str, camera_id=None):
 
 # ── switch capture ────────────────────────────────────────────────────────────
 def switch_capture(source_type: str, url: str, camera_id=None) -> bool:
-    with S.cap_lock, S.source_lock:
-        if (
-            S.cap and S.cap.isOpened()
-            and S.current_source["type"] == source_type
-            and S.current_source["url"] == url
-        ):
-            S.current_source["camera_id"] = camera_id
-            S.simulation_mode = False
-            return True
+    # FIX: original code acquired cap_lock + source_lock together in one block,
+    # then later called set_source() (which acquires source_lock) while still
+    # inside cap_lock — creating a lock-order inconsistency that can deadlock.
+    # Now we always acquire the two locks separately and never nest them.
 
+    # Check if already on this source (read both locks separately)
+    with S.source_lock:
+        already_same = (
+            S.current_source["type"] == source_type
+            and S.current_source["url"] == url
+        )
+    with S.cap_lock:
+        cap_ok = bool(S.cap and S.cap.isOpened())
+
+    if already_same and cap_ok:
+        with S.source_lock:
+            S.current_source["camera_id"] = camera_id
+        S.simulation_mode = False
+        return True
+
+    # Open outside any lock — this can be slow (RTSP timeout etc.)
     new_cap = open_capture(source_type, url)
     ok = new_cap is not None
 
+    # Update cap under cap_lock only
+    cap_is_none = False  # default; updated inside lock when ok=False
     with S.cap_lock:
         if ok:
             if S.cap:
                 S.cap.release()
             S.cap = new_cap
             S.simulation_mode = False
-            set_source(source_type, url, camera_id)
         else:
             if new_cap:
                 new_cap.release()
-            if S.cap is None:
-                S.simulation_mode = True
-                set_source("simulation", "none")
-            print(f"[Switch] Failed to open {url}")
+            cap_is_none = S.cap is None
+
+    # Update source under source_lock only (separate acquisition — no nesting)
+    if ok:
+        set_source(source_type, url, camera_id)
+    else:
+        if cap_is_none:
+            S.simulation_mode = True
+            set_source("simulation", "none", None)
+        print(f"[Switch] Failed to open {url}")
 
     return ok
 

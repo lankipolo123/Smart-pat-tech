@@ -88,19 +88,64 @@ def _seed(conn):
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         [
+            # today - ongoing
             ("A1", "ABC 1234", f"{t} 08:12:00", None, None, None),
             ("B1", "GHI 9012", f"{t} 09:45:00", None, None, None),
             ("B3", "JKL 3456", f"{t} 10:30:00", None, None, None),
 
-            ("A1", "ABC 1234",
-             f"{t - timedelta(days=4)} 08:10:00",
-             f"{t - timedelta(days=4)} 09:30:00",
-             80, 60.0),
+            # today - completed
+            ("A2", "DEF 0001", f"{t} 07:00:00", f"{t} 08:00:00", 60, 50.0),
+            ("A3", "DEF 0002", f"{t} 06:30:00", f"{t} 07:45:00", 75, 60.0),
 
+            # within last 7 days - completed
+            ("A1", "ABC 1234",
+             f"{t - timedelta(days=2)} 08:10:00",
+             f"{t - timedelta(days=2)} 09:30:00",
+             80, 60.0),
             ("B2", "XYZ 5678",
              f"{t - timedelta(days=3)} 10:00:00",
              f"{t - timedelta(days=3)} 12:00:00",
              120, 100.0),
+            ("A4", "PLT 4444",
+             f"{t - timedelta(days=5)} 11:00:00",
+             f"{t - timedelta(days=5)} 13:00:00",
+             120, 90.0),
+            ("B4", "PLT 5555",
+             f"{t - timedelta(days=6)} 09:00:00",
+             f"{t - timedelta(days=6)} 10:30:00",
+             90, 70.0),
+
+            # within last 30 days but older than 7 days
+            ("A2", "PLT 1111",
+             f"{t - timedelta(days=10)} 09:00:00",
+             f"{t - timedelta(days=10)} 11:00:00",
+             120, 80.0),
+            ("B4", "PLT 2222",
+             f"{t - timedelta(days=15)} 14:00:00",
+             f"{t - timedelta(days=15)} 15:30:00",
+             90, 60.0),
+            ("A5", "PLT 6666",
+             f"{t - timedelta(days=20)} 08:00:00",
+             f"{t - timedelta(days=20)} 09:30:00",
+             90, 70.0),
+            ("B5", "PLT 7777",
+             f"{t - timedelta(days=25)} 13:00:00",
+             f"{t - timedelta(days=25)} 14:30:00",
+             90, 65.0),
+
+            # older than 30 days - only shows in all time
+            ("A3", "PLT 3333",
+             f"{t - timedelta(days=45)} 08:00:00",
+             f"{t - timedelta(days=45)} 10:00:00",
+             120, 100.0),
+            ("B1", "PLT 8888",
+             f"{t - timedelta(days=60)} 10:00:00",
+             f"{t - timedelta(days=60)} 12:00:00",
+             120, 90.0),
+            ("A1", "PLT 9999",
+             f"{t - timedelta(days=90)} 09:00:00",
+             f"{t - timedelta(days=90)} 11:00:00",
+             120, 85.0),
         ]
     )
 

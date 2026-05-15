@@ -20,7 +20,8 @@ async def ws_zones(ws: WebSocket):
         S.zone_ws_clients.add(ws)
     try:
         with S.zones_lock:
-            await ws.send_text(json.dumps(S.zones_cache))
+            payload = json.dumps(S.zones_cache)
+        await ws.send_text(payload)
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:

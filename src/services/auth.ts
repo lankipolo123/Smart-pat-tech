@@ -6,6 +6,7 @@ export type AuthResponse = {
     email: string
     joined_at: string | null
     last_login: string | null
+    avatar_url?: string | null
 }
 
 export type UpdateProfilePayload = {
@@ -20,110 +21,92 @@ export type UpdateProfileResponse = {
     email: string
 }
 
-export async function loginUser(email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: {
+            ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            ...init?.headers,
+        },
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+        throw new Error(data.detail || data.message || "Request failed")
+    }
+    return data as T
+}
+
+export function loginUser(email: string, password: string): Promise<AuthResponse> {
+    return request<AuthResponse>("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Invalid email or password")
-    }
-    return res.json()
 }
 
-export async function registerUser(name: string, email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/auth/register`, {
+export function registerUser(name: string, email: string, password: string): Promise<AuthResponse> {
+    return request<AuthResponse>("/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Registration failed")
-    }
-    return res.json()
 }
 
-export async function updateProfile(
+export function updateProfile(
     token: string,
-    payload: UpdateProfilePayload
+    payload: UpdateProfilePayload,
 ): Promise<UpdateProfileResponse> {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
+    return request<UpdateProfileResponse>("/auth/profile", {
         method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to update profile")
-    }
-    return res.json()
 }
 
-export async function changeEmail(
+export function changeEmail(
     token: string,
     newEmail: string,
-    password: string
+    password: string,
 ): Promise<{ email: string }> {
-    const res = await fetch(`${API_BASE}/auth/email`, {
+    return request<{ email: string }>("/auth/email", {
         method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ newEmail, password }),
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to update email")
-    }
-    return res.json()
 }
 
-export async function changePassword(
+export function changePassword(
     token: string,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
 ): Promise<void> {
-    const res = await fetch(`${API_BASE}/auth/password`, {
+    return request<void>("/auth/password", {
         method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ currentPassword, newPassword }),
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to change password")
-    }
 }
 
-export async function deactivateAccount(token: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/auth/deactivate`, {
+export function deactivateAccount(token: string): Promise<void> {
+    return request<void>("/auth/deactivate", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to deactivate account")
-    }
 }
 
-export async function deleteAccount(token: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/auth/account`, {
+export function deleteAccount(token: string): Promise<void> {
+    return request<void>("/auth/account", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
     })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to delete account")
-    }
+}
+
+export function uploadAvatar(token: string, file: File): Promise<{ photoURL: string }> {
+    const form = new FormData()
+    form.append("file", file)
+    return request<{ photoURL: string }>("/auth/avatar", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+    })
 }
 
 export function saveSession(
@@ -131,7 +114,7 @@ export function saveSession(
     name: string,
     email: string,
     joinedAt: string | null,
-    lastLogin: string | null
+    lastLogin: string | null,
 ) {
     localStorage.setItem("token", token)
     localStorage.setItem("userName", name)
@@ -161,19 +144,4 @@ export function clearSession() {
     localStorage.removeItem("userEmail")
     localStorage.removeItem("joinedAt")
     localStorage.removeItem("lastLogin")
-}
-
-export async function uploadAvatar(token: string, file: File): Promise<{ photoURL: string }> {
-    const formData = new FormData()
-    formData.append("file", file)
-    const res = await fetch(`${API_BASE}/auth/avatar`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-    })
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Failed to upload photo")
-    }
-    return res.json()
 }

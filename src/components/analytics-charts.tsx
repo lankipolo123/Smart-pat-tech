@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { memo, useMemo, useState } from "react"
 
 import {
     Line,
@@ -34,47 +34,61 @@ import {
 } from "@/components/ui/chart"
 
 import {
-    fetchRevenueData,
-    fetchVehicleData,
     type RevenuePoint,
     type VehiclePoint,
 } from "@/services/analytics"
 
 type Tab = "revenue" | "vehicles"
 
-export function AnalyticsCharts() {
+type Props = {
+    revenueData: RevenuePoint[]
+    vehicleData: VehiclePoint[]
+    loading: boolean
+}
+
+export const AnalyticsCharts = memo(function AnalyticsCharts({
+    revenueData,
+    vehicleData,
+    loading,
+}: Props) {
+
     const [activeTab, setActiveTab] =
         useState<Tab>("revenue")
 
-    const [revenueData, setRevenueData] =
-        useState<RevenuePoint[]>([])
+    const maxRevenue = useMemo(() => {
+        return Math.max(
+            ...revenueData.map((r) => r.revenue),
+            0
+        )
+    }, [revenueData])
 
-    const [vehicleData, setVehicleData] =
-        useState<VehiclePoint[]>([])
+    const yTickFormatter = (v: number) => {
+        if (maxRevenue >= 1000) {
+            return `₱${(v / 1000).toFixed(1)}k`
+        }
 
-    useEffect(() => {
-        Promise.all([
-            fetchRevenueData(),
-            fetchVehicleData(),
-        ]).then(([revenue, vehicles]) => {
-            setRevenueData(revenue)
-            setVehicleData(vehicles)
-        })
-    }, [])
+        return `₱${v}`
+    }
 
     return (
-        <Card>
+        <Card
+            className={`transition-opacity duration-150 ${loading
+                    ? "opacity-70"
+                    : "opacity-100"
+                }`}
+        >
             <CardHeader>
                 <CardTitle>
                     Performance Overview
                 </CardTitle>
 
                 <CardDescription>
-                    Revenue and vehicle trends over time
+                    Revenue and vehicle trends
+                    over time
                 </CardDescription>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="min-w-0">
                 <Tabs
                     value={activeTab}
                     onValueChange={(v) =>
@@ -92,106 +106,190 @@ export function AnalyticsCharts() {
                     </TabsList>
                 </Tabs>
 
-                {activeTab === "revenue" && (
+                {/* KEEP BOTH MOUNTED */}
+                {/* JUST HIDE THEM */}
+                {/* prevents recharts remount storms */}
+
+                <div
+                    className={
+                        activeTab === "revenue"
+                            ? "block"
+                            : "hidden"
+                    }
+                >
                     <ChartContainer
                         config={{
                             revenue: {
-                                label: "Revenue (₱)",
-                                color: "var(--chart-3)",
+                                label:
+                                    "Revenue (₱)",
+                                color:
+                                    "var(--chart-3)",
                             },
                         }}
-                        className="h-[260px] w-full contain-layout"
+                        className="h-[260px] w-full min-w-0"
                     >
-                        <ResponsiveContainer
-                            width="100%"
-                            height="100%"
-                        >
-                            <LineChart data={revenueData}>
-                                <CartesianGrid vertical={false} />
 
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    tick={{ fontSize: 11 }}
-                                />
+                        {/* STABLE HEIGHT */}
+                        <div className="h-[260px] w-full min-w-0">
 
-                                <YAxis
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    tick={{ fontSize: 11 }}
-                                    tickFormatter={(v: number) =>
-                                        `₱${(v / 1000).toFixed(0)}k`
-                                    }
-                                />
+                            <ResponsiveContainer
+                                width="100%"
+                                height={260}
+                            >
+                                <LineChart
+                                    data={revenueData}
+                                    margin={{
+                                        top: 8,
+                                        right: 16,
+                                        left: 8,
+                                        bottom: 0,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        vertical={false}
+                                    />
 
-                                <ChartTooltip
-                                    content={<ChartTooltipContent />}
-                                />
+                                    <XAxis
+                                        dataKey="date"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tick={{
+                                            fontSize: 11,
+                                        }}
+                                    />
 
-                                <Line
-                                    type="monotone"
-                                    dataKey="revenue"
-                                    stroke="var(--chart-3)"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={false}
-                                    isAnimationActive={false}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tick={{
+                                            fontSize: 11,
+                                        }}
+                                        tickFormatter={
+                                            yTickFormatter
+                                        }
+                                        domain={[
+                                            0,
+                                            "auto",
+                                        ]}
+                                    />
+
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent />
+                                        }
+                                    />
+
+                                    <Line
+                                        type="monotone"
+                                        dataKey="revenue"
+                                        stroke="var(--chart-3)"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{
+                                            r: 4,
+                                        }}
+                                        isAnimationActive={
+                                            false
+                                        }
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </ChartContainer>
-                )}
+                </div>
 
-                {activeTab === "vehicles" && (
+                <div
+                    className={
+                        activeTab === "vehicles"
+                            ? "block"
+                            : "hidden"
+                    }
+                >
                     <ChartContainer
                         config={{
                             vehicles: {
-                                label: "Vehicles",
-                                color: "var(--chart-1)",
+                                label:
+                                    "Vehicles",
+                                color:
+                                    "var(--chart-1)",
                             },
                         }}
-                        className="h-[260px] w-full contain-layout"
+                        className="h-[260px] w-full min-w-0"
                     >
-                        <ResponsiveContainer
-                            width="100%"
-                            height="100%"
-                        >
-                            <BarChart data={vehicleData}>
-                                <CartesianGrid vertical={false} />
 
-                                <XAxis
-                                    dataKey="date"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    tick={{ fontSize: 11 }}
-                                />
+                        {/* STABLE HEIGHT */}
+                        <div className="h-[260px] w-full min-w-0">
 
-                                <YAxis
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    tick={{ fontSize: 11 }}
-                                />
+                            <ResponsiveContainer
+                                width="100%"
+                                height={260}
+                            >
+                                <BarChart
+                                    data={vehicleData}
+                                    margin={{
+                                        top: 8,
+                                        right: 16,
+                                        left: 8,
+                                        bottom: 0,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        vertical={false}
+                                    />
 
-                                <ChartTooltip
-                                    content={<ChartTooltipContent />}
-                                />
+                                    <XAxis
+                                        dataKey="date"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tick={{
+                                            fontSize: 11,
+                                        }}
+                                    />
 
-                                <Bar
-                                    dataKey="vehicles"
-                                    fill="var(--chart-1)"
-                                    radius={[4, 4, 0, 0]}
-                                    isAnimationActive={false}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tick={{
+                                            fontSize: 11,
+                                        }}
+                                        allowDecimals={
+                                            false
+                                        }
+                                        domain={[
+                                            0,
+                                            "auto",
+                                        ]}
+                                    />
+
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent />
+                                        }
+                                    />
+
+                                    <Bar
+                                        dataKey="vehicles"
+                                        fill="var(--chart-1)"
+                                        radius={[
+                                            4,
+                                            4,
+                                            0,
+                                            0,
+                                        ]}
+                                        isAnimationActive={
+                                            false
+                                        }
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </ChartContainer>
-                )}
+                </div>
             </CardContent>
         </Card>
     )
-}
+})

@@ -1,6 +1,7 @@
 """
-main.py — SmartPat backend entry point.
-Only: app init, lifespan, middleware, static mount, router includes.
+main.py — TechSentinel SmartPat backend.
+Camera, detection, zones, and WebSocket streaming only.
+Auth and parking sessions are handled by Supabase.
 """
 
 import asyncio
@@ -8,52 +9,47 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from jose import jwt as jose_jwt, JWTError
 
 import services.state as S
 from services.auth import init_db as init_auth_db
-from services.camera import init_camera
-from services.db import activate_saved_source, init_db, seed_env_camera
-from services.detector import detection_loop
-from services.parking import init_parking_db
+from services.db import init_db, seed_env_camera
 from services.zones import load_zones
 
-from routers import auth, cameras, parking, websockets, zones, root
+from routers import auth, cameras, parking, root, websockets, zones
 
-SECRET_KEY = "smartpat-secret-key-change-in-prod"
-ALGORITHM  = "HS256"
 
-def _get_user_id_from_token(authorization: str | None) -> int:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing token")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=401, detail="Invalid token")
+def _camera_and_detect():
+    from services.camera import init_camera
+    from services.db import activate_saved_source
+    from services.detector import detection_loop
+
+    with S.cap_lock:
+        if not activate_saved_source():
+            S.cap = init_camera()
+
+    detection_loop()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _main_loop
     S._main_loop = asyncio.get_running_loop()
+
     init_auth_db()
     init_db()
-    init_parking_db()
     seed_env_camera()
     load_zones()
-    if not activate_saved_source():
-        S.cap = init_camera()
-    threading.Thread(target=detection_loop, daemon=True).start()
-    print("\n✅ SmartPat backend is running — http://127.0.0.1:8000\n")
+
+    threading.Thread(target=_camera_and_detect, daemon=True).start()
+    print("\nTechSentinel SmartPat backend running - http://127.0.0.1:8000\n")
     yield
+
     with S.cap_lock:
         if S.cap:
             S.cap.release()
+        S.cap = None
 
 
 app = FastAPI(lifespan=lifespan)
@@ -69,14 +65,14 @@ Path("uploads").mkdir(exist_ok=True)
 Path("static").mkdir(exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static",  StaticFiles(directory="static"),  name="static")
 
 app.include_router(root.router)
 app.include_router(auth.router)
 app.include_router(zones.router)
 app.include_router(cameras.router)
-app.include_router(parking.router)
 app.include_router(websockets.router)
+app.include_router(parking.router)
 
 
 @app.get("/health")

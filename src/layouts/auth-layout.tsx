@@ -18,7 +18,7 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
                         linear-gradient(to right, rgba(255,0,0,0.25) 1px, transparent 1px),
                         linear-gradient(to bottom, rgba(255,0,0,0.25) 1px, transparent 1px)
                     `,
-                    backgroundSize: "70px 70px",
+                    backgroundSize: "40px 40px",
                     maskImage: "radial-gradient(circle at 30% 40%, black 30%, transparent 75%)",
                     WebkitMaskImage: "radial-gradient(circle at 30% 40%, black 30%, transparent 75%)",
                 }}
@@ -26,7 +26,7 @@ export default function AuthLayout({ children, variant = "login" }: Props) {
 
             {/* FLOATING LOGO — login only */}
             {!isSignup && (
-                <div className="absolute z-10 -top-[44px] -left-6 md:-top-[70px] md:-left-16">
+                <div className="absolute z-10 -top-[34px]  md:-top-[40px] md:-left-2">
                     <img
                         src="https://i.imgur.com/k0G0eJ2.png"
                         alt="Logo"
