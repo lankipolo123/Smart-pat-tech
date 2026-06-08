@@ -48,27 +48,25 @@ export function SignUpForm({ onSubmit, onLogin, error, loading, className }: Pro
 
             <form onSubmit={handleSubmit}>
                 <FieldGroup>
-                    <div className="grid grid-cols-2 gap-3">
-                        <Field>
-                            <FieldLabel>Full name</FieldLabel>
-                            <Input name="name" type="text" placeholder="Juan dela Cruz" required disabled={loading} />
-                        </Field>
+                    <Field>
+                        <FieldLabel>Full name</FieldLabel>
+                        <Input name="name" type="text" placeholder="Juan dela Cruz" required disabled={loading} />
+                    </Field>
 
-                        <Field>
-                            <FieldLabel>Email</FieldLabel>
-                            <Input name="email" type="email" placeholder="you@example.com" required disabled={loading} />
-                        </Field>
+                    <Field>
+                        <FieldLabel>Email</FieldLabel>
+                        <Input name="email" type="email" placeholder="you@example.com" required disabled={loading} />
+                    </Field>
 
-                        <Field>
-                            <FieldLabel>Password</FieldLabel>
-                            <Input name="password" type="password" required disabled={loading} />
-                        </Field>
+                    <Field>
+                        <FieldLabel>Password</FieldLabel>
+                        <Input name="password" type="password" required disabled={loading} />
+                    </Field>
 
-                        <Field>
-                            <FieldLabel>Confirm password</FieldLabel>
-                            <Input name="confirmPassword" type="password" required disabled={loading} />
-                        </Field>
-                    </div>
+                    <Field>
+                        <FieldLabel>Confirm password</FieldLabel>
+                        <Input name="confirmPassword" type="password" required disabled={loading} />
+                    </Field>
 
                     <Field>
                         <Button type="submit" className="w-full" disabled={loading}>

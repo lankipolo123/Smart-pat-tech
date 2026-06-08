@@ -1,8 +1,7 @@
 import { fetchJsonWithTimeout, withTimeout } from "@/services/request"
 
-const FASTAPI_BASE = "http://localhost:8000"
+const API_BASE = "/api"
 
-// ── Types (identical shapes to before) ───────────────────────────────────────
 export type SlotStatus = "available" | "occupied" | "reserved"
 
 export type ParkingSlot = {
@@ -36,7 +35,7 @@ export type ParkingStats = {
 export async function fetchSlots(): Promise<ParkingSlot[]> {
     try {
         return await fetchJsonWithTimeout<ParkingSlot[]>(
-            `${FASTAPI_BASE}/parking/slots`,
+            `${API_BASE}/parking/slots`,
             "Parking slots",
             3_000,
         )
@@ -46,11 +45,10 @@ export async function fetchSlots(): Promise<ParkingSlot[]> {
     }
 }
 
-// ── Sessions — Supabase ───────────────────────────────────────────────────────
 export async function fetchSessions(range: string): Promise<SessionRecord[]> {
     const rows = await withTimeout(
         fetchJsonWithTimeout<Array<SessionRecord & { duration_min?: number | null }>>(
-            `${FASTAPI_BASE}/parking/sessions?range=${encodeURIComponent(range)}`,
+            `${API_BASE}/parking/sessions?range=${encodeURIComponent(range)}`,
             "Parking sessions",
         ),
         "Parking sessions",
@@ -70,7 +68,7 @@ export async function fetchSessions(range: string): Promise<SessionRecord[]> {
 export async function fetchParkingStats(range: string): Promise<ParkingStats | null> {
     return withTimeout(
         fetchJsonWithTimeout<ParkingStats>(
-            `${FASTAPI_BASE}/parking/stats?range=${encodeURIComponent(range)}`,
+            `${API_BASE}/parking/stats?range=${encodeURIComponent(range)}`,
             "Parking stats",
         ),
         "Parking stats",

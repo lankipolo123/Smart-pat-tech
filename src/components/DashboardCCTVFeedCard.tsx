@@ -1,13 +1,19 @@
 // components/DashboardCCTVFeedCard.tsx
-import { RefreshCw, Camera, ChevronDown, PenLine, Trash2, Check } from "lucide-react"
+import { RefreshCw, Camera, ChevronDown, PenLine, Trash2, Check, Maximize2, Minimize2, Pause, Play } from "lucide-react"
 import {
     Card, CardHeader, CardTitle, CardDescription,
     CardContent, CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useRef, useState, useEffect, useCallback } from "react"
-import { type Camera as CameraDevice } from "@/services/camera"
+import { pauseCameraFeed, resumeCameraFeed, type Camera as CameraDevice } from "@/services/camera"
 
 export type CCTVStatus = "connecting" | "live" | "disconnected"
 
@@ -31,13 +37,22 @@ const statusConfig: Record<CCTVStatus, { label: string; pill: string; message: s
 
 type Point = [number, number]
 
+type DetectionBox = {
+    x: number
+    y: number
+    width: number
+    height: number
+    label?: string
+    confidence?: number
+}
+
 type Props = {
     detections?: number
     parkingSlots?: number
     title?: string
     description?: string
     onRefresh?: () => void
-    onZoneDrawn?: (points: Point[], slotName: string) => void
+    onZoneDrawn?: (points: Point[], slotName: string) => void | Promise<boolean | void>
     activeCamera?: string | null
     activeCameraId?: number | null
     cameras?: CameraDevice[]
@@ -64,10 +79,16 @@ export function DashboardCCTVFeedCard({
     const [imageSrc, setImageSrc] = useState<string | null>(null)
     const [drawing, setDrawing] = useState(false)
     const [points, setPoints] = useState<Point[]>([])
+    const [isPaused, setIsPaused] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [detectionBoxes, setDetectionBoxes] = useState<DetectionBox[]>([])
 
     const wsRef = useRef<WebSocket | null>(null)
+    const detectionsWsRef = useRef<WebSocket | null>(null)
     const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const detectionsReconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const retryDelayRef = useRef(1_000)
+    const detectionsRetryDelayRef = useRef(1_000)
     const blobUrlRef = useRef<string | null>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -131,20 +152,73 @@ export function DashboardCCTVFeedCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // ← empty deps: connectWs is stable for the lifetime of the component
 
+    const connectDetectionsWs = useCallback(() => {
+        if (!mountedRef.current) return
+
+        if (detectionsReconnectRef.current !== null) {
+            clearTimeout(detectionsReconnectRef.current)
+            detectionsReconnectRef.current = null
+        }
+
+        if (detectionsWsRef.current) {
+            detectionsWsRef.current.onclose = null
+            detectionsWsRef.current.onerror = null
+            detectionsWsRef.current.close()
+            detectionsWsRef.current = null
+        }
+
+        const ws = new WebSocket("ws://localhost:8000/ws/detections")
+        detectionsWsRef.current = ws
+
+        ws.onopen = () => {
+            if (!mountedRef.current) { ws.close(); return }
+            detectionsRetryDelayRef.current = 1_000
+        }
+
+        ws.onmessage = (event) => {
+            if (!mountedRef.current) return
+            try {
+                const boxes = JSON.parse(event.data) as DetectionBox[]
+                setDetectionBoxes(Array.isArray(boxes) ? boxes : [])
+            } catch {
+                setDetectionBoxes([])
+            }
+        }
+
+        ws.onerror = () => {
+            if (!mountedRef.current) return
+            setDetectionBoxes([])
+        }
+
+        ws.onclose = () => {
+            if (!mountedRef.current) return
+            const delay = detectionsRetryDelayRef.current
+            detectionsRetryDelayRef.current = Math.min(delay * 2, 30_000)
+            detectionsReconnectRef.current = setTimeout(connectDetectionsWs, delay)
+        }
+    }, [])
+
     useEffect(() => {
         mountedRef.current = true
         connectWs()
+        connectDetectionsWs()
         return () => {
             mountedRef.current = false
             if (reconnectRef.current !== null) clearTimeout(reconnectRef.current)
+            if (detectionsReconnectRef.current !== null) clearTimeout(detectionsReconnectRef.current)
             if (wsRef.current) {
                 wsRef.current.onclose = null
                 wsRef.current.onerror = null
                 wsRef.current.close()
             }
+            if (detectionsWsRef.current) {
+                detectionsWsRef.current.onclose = null
+                detectionsWsRef.current.onerror = null
+                detectionsWsRef.current.close()
+            }
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
         }
-    }, [connectWs])
+    }, [connectWs, connectDetectionsWs])
 
     // ─── Canvas drawing ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -189,7 +263,7 @@ export function DashboardCCTVFeedCard({
             ctx.lineWidth = 1.5
             ctx.stroke()
         }
-    }, [points, drawing])
+    }, [points, drawing, isExpanded])
 
     // ─── Mouse handlers ──────────────────────────────────────────────────────
     const getCanvasPoint = (e: React.MouseEvent): Point => {
@@ -207,7 +281,33 @@ export function DashboardCCTVFeedCard({
         setPoints(prev => [...prev, pt])
     }
 
-    const finishPolygon = () => {
+    const pauseFeed = useCallback(async () => {
+        try {
+            await pauseCameraFeed()
+            setIsPaused(true)
+        } catch (error) {
+            console.error("Failed to pause camera feed:", error)
+        }
+    }, [])
+
+    const resumeFeed = useCallback(async () => {
+        try {
+            await resumeCameraFeed()
+        } catch (error) {
+            console.error("Failed to resume camera feed:", error)
+        } finally {
+            setIsPaused(false)
+        }
+    }, [])
+
+    const startDrawing = async () => {
+        if (!activeCameraId) return
+        setDrawing(true)
+        setPoints([])
+        await pauseFeed()
+    }
+
+    const finishPolygon = async () => {
         if (points.length < 3) return
         const canvas = canvasRef.current
         if (!canvas) return
@@ -217,16 +317,32 @@ export function DashboardCCTVFeedCard({
         ])
         const slotName = `S${slotCounterRef.current.toString().padStart(4, "0")}`
         slotCounterRef.current += 1
-        onZoneDrawn?.(rounded, slotName)
-        cancelDrawing()
+        await onZoneDrawn?.(rounded, slotName)
+        await cancelDrawing()
     }
 
-    const cancelDrawing = () => {
+    const cancelDrawing = async () => {
         setDrawing(false)
         setPoints([])
         const ctx = canvasRef.current?.getContext("2d")
         if (ctx && canvasRef.current)
             ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+        if (isPaused) await resumeFeed()
+    }
+
+    const handlePauseToggle = async () => {
+        if (isPaused) {
+            await resumeFeed()
+        } else {
+            await pauseFeed()
+        }
+    }
+
+    const handleCameraSelect = async (cameraId: number) => {
+        setDrawing(false)
+        setPoints([])
+        if (isPaused) await resumeFeed()
+        onCameraSwitch?.(cameraId)
     }
 
     const handleRefresh = () => {
@@ -239,7 +355,12 @@ export function DashboardCCTVFeedCard({
     const activeLabel = activeCamera ?? "No Camera"
 
     return (
-        <Card className="w-full">
+        <Card
+            className={cn(
+                "w-full",
+                isExpanded && "fixed inset-4 z-50 overflow-auto shadow-2xl",
+            )}
+        >
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div>
@@ -248,11 +369,31 @@ export function DashboardCCTVFeedCard({
                     </div>
                     <div className="flex items-center gap-2">
                         {cameras.length > 0 && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
-                                <Camera className="size-3.5" />
-                                {activeLabel}
-                                <ChevronDown className="size-3" />
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger
+                                    render={() => (
+                                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
+                                            <Camera className="size-3.5" />
+                                            {activeLabel}
+                                            <ChevronDown className="size-3" />
+                                        </Button>
+                                    )}
+                                />
+                                <DropdownMenuContent align="end" className="w-56">
+                                    {cameras.map((camera) => (
+                                        <DropdownMenuItem
+                                            key={camera.id}
+                                            onClick={() => handleCameraSelect(camera.id)}
+                                            className={cn(
+                                                activeCameraId === camera.id && "bg-accent",
+                                            )}
+                                        >
+                                            <Camera className="size-3.5 mr-2" />
+                                            {camera.name || `Camera ${camera.id}`}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )}
                         <span className={cn(
                             "text-[10px] px-2 py-0.5 rounded-full border w-fit mt-1",
@@ -267,7 +408,10 @@ export function DashboardCCTVFeedCard({
             <CardContent>
                 <div
                     ref={containerRef}
-                    className="relative w-full aspect-video bg-black rounded-lg overflow-hidden"
+                    className={cn(
+                        "relative w-full aspect-video bg-black rounded-lg overflow-hidden",
+                        isExpanded && "h-[calc(100vh-12rem)] aspect-auto",
+                    )}
                 >
                     {imageSrc && status === "live" ? (
                         <img
@@ -280,6 +424,26 @@ export function DashboardCCTVFeedCard({
                             {connectionMessage ?? cfg.message}
                         </div>
                     )}
+
+                    {status === "live" && detectionBoxes.map((box, index) => (
+                        <div
+                            key={`${box.label ?? "vehicle"}-${index}-${box.x}-${box.y}`}
+                            className="pointer-events-none absolute border-2 border-yellow-300 shadow-[0_0_0_1px_rgba(0,0,0,0.7)]"
+                            style={{
+                                left: `${box.x * 100}%`,
+                                top: `${box.y * 100}%`,
+                                width: `${box.width * 100}%`,
+                                height: `${box.height * 100}%`,
+                            }}
+                        >
+                            <div className="absolute -top-6 left-0 rounded-sm bg-yellow-300 px-1.5 py-0.5 text-[10px] font-medium text-black shadow">
+                                {box.label ?? "vehicle"}
+                                {typeof box.confidence === "number"
+                                    ? ` ${Math.round(box.confidence * 100)}%`
+                                    : ""}
+                            </div>
+                        </div>
+                    ))}
 
                     <canvas
                         ref={canvasRef}
@@ -297,12 +461,17 @@ export function DashboardCCTVFeedCard({
                             <span className="text-green-600 font-medium ml-1">{points.length} pts</span>
                         </div>
                     )}
+                    {isPaused && !drawing && (
+                        <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-full">
+                            PAUSED
+                        </div>
+                    )}
                 </div>
             </CardContent>
 
             <CardFooter className="flex justify-between flex-wrap gap-2">
                 <div className="text-xs text-muted-foreground">
-                    {detections} detections • {parkingSlots} slots
+                    {detectionBoxes.length || detections} detections • {parkingSlots} slots
                 </div>
 
                 <div className="flex gap-2 flex-wrap">
@@ -317,26 +486,19 @@ export function DashboardCCTVFeedCard({
                         </>
                     ) : (
                         <>
-                            <Button size="sm" variant="outline" onClick={() => setDrawing(true)}>
-                                <PenLine className="size-4" /> Draw Zone
+                            <Button size="sm" variant="outline" onClick={handlePauseToggle}>
+                                {isPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+                                {isPaused ? "Resume" : "Pause"}
                             </Button>
 
-                            {cameras.length > 0 && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                        const cam = activeCameraId != null
-                                            ? cameras.find(c => c.id === activeCameraId)
-                                            : cameras.find(c => c.name === activeLabel)
-                                        if (cam) onCameraSwitch?.(cam.id)
-                                    }}
-                                >
-                                    <Camera className="size-4" />
-                                    {activeLabel}
-                                    <ChevronDown className="size-4" />
-                                </Button>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => setIsExpanded((value) => !value)}>
+                                {isExpanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                                {isExpanded ? "Close Zoom" : "Full Zoom"}
+                            </Button>
+
+                            <Button size="sm" variant="outline" onClick={startDrawing} disabled={!activeCameraId}>
+                                <PenLine className="size-4" /> Draw Zone
+                            </Button>
 
                             <Button size="sm" onClick={handleRefresh}>
                                 <RefreshCw className="size-4" /> Refresh

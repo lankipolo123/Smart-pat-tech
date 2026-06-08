@@ -98,17 +98,23 @@ export function DashboardPage() {
     }, [connectWebSocket])
 
     const handleZoneDrawn = useCallback(async (points: Point[], slotName: string) => {
+        if (!cameraHook.activeCameraId) return
         try {
             const res = await fetch("http://localhost:8000/zones", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slot: slotName, points }),
+                body: JSON.stringify({
+                    slot: slotName,
+                    points,
+                    zone_type: "parking",
+                    camera_id: cameraHook.activeCameraId,
+                }),
             })
             if (!res.ok) throw new Error("Failed to save zone")
         } catch (err) {
             console.error("Zone save error:", err)
         }
-    }, [])
+    }, [cameraHook.activeCameraId])
 
     return (
         <>

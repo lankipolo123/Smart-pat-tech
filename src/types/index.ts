@@ -15,12 +15,14 @@ export type VideoSource = {
     type: string
     url: string
     active: number
+    camera_id?: number | null
 }
 
 export type ZoneType = "parking" | "entry" | "exit"
 
 export type Zone = {
     id?: number
+    camera_id?: number | null
     slot: string
     points: number[][]
     zone_type?: ZoneType

@@ -26,9 +26,10 @@ def _camera_and_detect():
     from services.db import activate_saved_source
     from services.detector import detection_loop
 
-    with S.cap_lock:
-        if not activate_saved_source():
-            S.cap = init_camera()
+    if not activate_saved_source():
+        cap = init_camera()
+        with S.cap_lock:
+            S.cap = cap
 
     detection_loop()
 
@@ -90,11 +91,14 @@ def camera_status():
         age_s     = (time.monotonic() - S.last_frame_ts) if S.last_frame_ts else None
     with S.source_lock:
         source = dict(S.current_source)
+    with S.pause_lock:
+        paused = S.capture_paused
     connected = (not S.simulation_mode) and opened and has_frame and (age_s is None or age_s <= 3.0)
     return {
         "connected":         connected,
         "simulation_mode":   S.simulation_mode,
         "opened":            opened,
+        "paused":            paused,
         "has_frame":         has_frame,
         "frame_age_seconds": round(age_s, 3) if age_s is not None else None,
         "source":            source,

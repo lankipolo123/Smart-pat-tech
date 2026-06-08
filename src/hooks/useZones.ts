@@ -16,9 +16,13 @@ export function useZones() {
   const [saving, setSaving] = useState(false)
   const [zoneType, setZoneType] = useState<ZoneType>('parking')
 
-  const loadZones = useCallback(async () => {
+  const loadZones = useCallback(async (cameraId?: number | null) => {
+    if (!cameraId) {
+      setZones([])
+      return
+    }
     try {
-      const data = await fetchZones()
+      const data = await fetchZones(cameraId)
       setZones(data)
     } catch (error) {
       console.error("Failed to load zones:", error)
@@ -58,11 +62,12 @@ export function useZones() {
     zonePoints: number[][],
     rawSlotName: string,
     type: ZoneType = 'parking',
+    cameraId?: number | null,
   ): Promise<boolean> => {
-    if (!rawSlotName.trim() || zonePoints.length < 3) return false
+    if (!rawSlotName.trim() || zonePoints.length < 3 || !cameraId) return false
     try {
-      await createZone(rawSlotName.trim(), zonePoints, type)
-      await loadZones()
+      await createZone(rawSlotName.trim(), zonePoints, type, cameraId)
+      await loadZones(cameraId)
       return true
     } catch (error) {
       console.error("Failed to create drawn zone:", error)
@@ -75,17 +80,18 @@ export function useZones() {
     updatedSlot: string,
     updatedPoints: number[][],
     type: ZoneType = 'parking',
+    cameraId?: number | null,
   ) => {
-    await updateZoneApi(id, updatedSlot, updatedPoints, type)
-    await loadZones()
+    await updateZoneApi(id, updatedSlot, updatedPoints, type, cameraId ?? undefined)
+    await loadZones(cameraId)
   }, [loadZones])
 
-  const deleteZone = useCallback(async (id?: number) => {
+  const deleteZone = useCallback(async (id?: number, cameraId?: number | null) => {
     if (!id) return
     try {
       await deleteZoneApi(id)
       if (highlightedId === id) setHighlightedId(undefined)
-      await loadZones()
+      await loadZones(cameraId)
     } catch (error) {
       console.error("Failed to delete zone:", error)
       alert("Failed to delete zone")

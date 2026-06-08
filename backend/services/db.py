@@ -27,16 +27,79 @@ def _safe_add_column(conn, table: str, column: str, col_def: str):
         print(f"[DB] Migrated: added '{column}' to '{table}'")
 
 
+def _safe_add_index(conn, table: str, index_name: str, index_def: str):
+    existing = conn.execute(
+        """
+        SELECT INDEX_NAME
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND INDEX_NAME = ?
+        LIMIT 1
+        """,
+        (table, index_name),
+    ).fetchone()
+    if not existing:
+        conn.execute(f"ALTER TABLE {table} ADD INDEX {index_name} {index_def}")
+        print(f"[DB] Migrated: added index '{index_name}' to '{table}'")
+
+
+def _drop_slot_only_unique_indexes(conn):
+    indexes = conn.execute(
+        """
+        SELECT
+            INDEX_NAME,
+            GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS columns_csv,
+            MAX(NON_UNIQUE) AS non_unique
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'zones'
+          AND INDEX_NAME <> 'PRIMARY'
+        GROUP BY INDEX_NAME
+        """
+    ).fetchall() or []
+    for idx in indexes:
+        if int(idx["non_unique"]) == 0 and idx["columns_csv"] == "slot":
+            conn.execute(f"ALTER TABLE zones DROP INDEX `{idx['INDEX_NAME']}`")
+            print(f"[DB] Migrated: dropped slot-only unique index '{idx['INDEX_NAME']}'")
+
+
+def _assign_legacy_zones_to_active_camera(conn):
+    has_legacy = conn.execute(
+        "SELECT 1 FROM zones WHERE camera_id IS NULL LIMIT 1"
+    ).fetchone()
+    if not has_legacy:
+        return
+
+    camera = conn.execute(
+        """
+        SELECT id FROM cameras
+        ORDER BY is_active DESC, updated_at DESC, id DESC
+        LIMIT 1
+        """
+    ).fetchone()
+    if not camera:
+        return
+
+    conn.execute(
+        "UPDATE zones SET camera_id=? WHERE camera_id IS NULL",
+        (camera["id"],),
+    )
+    print(f"[DB] Migrated: assigned legacy zones to camera {camera['id']}")
+
+
 def init_db():
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS zones (
                 id         INT AUTO_INCREMENT PRIMARY KEY,
-                slot       VARCHAR(64) UNIQUE,
+                camera_id  INT NULL,
+                slot       VARCHAR(64) NOT NULL,
                 points     TEXT,
                 zone_type  VARCHAR(32) DEFAULT 'parking',
                 occupied   TINYINT DEFAULT 0,
-                entry_time DATETIME NULL
+                entry_time DATETIME NULL,
+                INDEX idx_zones_camera_id (camera_id)
             )
         """)
         conn.execute("""
@@ -66,7 +129,7 @@ def init_db():
                 slot         VARCHAR(64) NOT NULL,
                 plate        VARCHAR(64) NOT NULL,
                 entry        DATETIME NOT NULL,
-                exit         DATETIME NULL,
+                `exit`       DATETIME NULL,
                 duration_min INT NULL,
                 bill         DECIMAL(10,2) NULL,
                 created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,9 +141,13 @@ def init_db():
             ("zones",         "zone_type",  "VARCHAR(32) DEFAULT 'parking'"),
             ("zones",         "occupied",   "TINYINT DEFAULT 0"),
             ("zones",         "entry_time", "DATETIME NULL"),
+            ("zones",         "camera_id",  "INT NULL"),
             ("video_sources", "camera_id",  "INT NULL"),
         ]:
             _safe_add_column(conn, table, col, defn)
+        _drop_slot_only_unique_indexes(conn)
+        _safe_add_index(conn, "zones", "idx_zones_camera_id", "(camera_id)")
+        _assign_legacy_zones_to_active_camera(conn)
         _seed_parking_sessions(conn)
 
 
@@ -114,7 +181,7 @@ def _seed_parking_sessions(conn):
 
     conn.executemany(
         """
-        INSERT INTO parking_sessions (slot, plate, entry, exit, duration_min, bill)
+        INSERT INTO parking_sessions (slot, plate, entry, `exit`, duration_min, bill)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         samples,

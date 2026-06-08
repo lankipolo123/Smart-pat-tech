@@ -1,0 +1,49 @@
+
+Options +Indexes
+
+RewriteEngine On
+RewriteBase /backend-php/
+
+# Forward Authorization header to PHP (important for JWT)
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
+# Allow existing files/folders directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ── Auth ───────────────────────────────────────────────────────────────
+RewriteRule ^auth/login/?$       auth/index.php?action=login [L,QSA]
+RewriteRule ^auth/register/?$    auth/index.php?action=register [L,QSA]
+RewriteRule ^auth/profile/?$     auth/index.php?action=profile [L,QSA]
+RewriteRule ^auth/email/?$       auth/index.php?action=email [L,QSA]
+RewriteRule ^auth/password/?$    auth/index.php?action=password [L,QSA]
+RewriteRule ^auth/deactivate/?$  auth/index.php?action=deactivate [L,QSA]
+RewriteRule ^auth/account/?$     auth/index.php?action=account [L,QSA]
+RewriteRule ^auth/avatar/?$      auth/index.php?action=avatar [L,QSA]
+
+# ── Cameras ────────────────────────────────────────────────────────────
+RewriteRule ^cameras/?$                      cameras/index.php [L,QSA]
+RewriteRule ^cameras/([0-9]+)/activate/?$   cameras/index.php?id=$1&action=activate [L,QSA]
+RewriteRule ^cameras/([0-9]+)/?$            cameras/index.php?id=$1 [L,QSA]
+
+# ── Zones ──────────────────────────────────────────────────────────────
+RewriteRule ^zones/?$               zones/index.php [L,QSA]
+RewriteRule ^zones/([0-9]+)/?$      zones/index.php?id=$1 [L,QSA]
+
+# ── Parking ────────────────────────────────────────────────────────────
+RewriteRule ^parking/slots/?$       parking/index.php?action=slots [L,QSA]
+RewriteRule ^parking/sessions/?$    parking/index.php?action=sessions [L,QSA]
+RewriteRule ^parking/stats/?$       parking/index.php?action=stats [L,QSA]
+
+# ── Analytics ──────────────────────────────────────────────────────────
+RewriteRule ^analytics/stats/?$      analytics/index.php?action=stats [L,QSA]
+RewriteRule ^analytics/revenue/?$    analytics/index.php?action=revenue [L,QSA]
+RewriteRule ^analytics/vehicles/?$   analytics/index.php?action=vehicles [L,QSA]
+RewriteRule ^analytics/activity/?$   analytics/index.php?action=activity [L,QSA]
+
+
+# ── Sources ──────────────────────────────────────────────────────────
+RewriteRule ^sources/?$                       sources/index.php [L,QSA]
+RewriteRule ^sources/([0-9]+)/activate/?$     sources/index.php?id=$1&action=activate [L,QSA]
+RewriteRule ^sources/([0-9]+)/?$              sources/index.php?id=$1 [L,QSA]

@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react"
-
 import {
     Card, CardContent, CardHeader,
     CardTitle, CardDescription,
@@ -19,27 +17,16 @@ import { StatusBadge } from "@/components/status-badge"
 
 type Props = {
     sessions: SessionRecord[]
+    paginated: SessionRecord[]
     loading: boolean
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
 }
 
-const PAGE_SIZE = 10
-
-export function HistoryTable({ sessions, loading }: Props) {
-    const [page, setPage] = useState(1)
-
-    useEffect(() => {
-        setPage(1)
-    }, [sessions])
-
-    const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE))
-    const paginated = sessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-    const rangeStart = sessions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-    const rangeEnd = Math.min(page * PAGE_SIZE, sessions.length)
-
-    function go(p: number) {
-        if (p < 1 || p > totalPages) return
-        setPage(p)
-    }
+export function HistoryTable({ sessions, paginated, loading, page, totalPages, onPageChange }: Props) {
+    const rangeStart = sessions.length === 0 ? 0 : (page - 1) * 10 + 1
+    const rangeEnd = Math.min(page * 10, sessions.length)
 
     return (
         <Card className={`transition-opacity duration-150 ${loading ? "opacity-50" : "opacity-100"}`}>
@@ -117,7 +104,7 @@ export function HistoryTable({ sessions, loading }: Props) {
                                 <PaginationItem>
                                     <PaginationPrevious
                                         href="#"
-                                        onClick={e => { e.preventDefault(); go(page - 1) }}
+                                        onClick={e => { e.preventDefault(); onPageChange(page - 1) }}
                                         className={page === 1 ? "pointer-events-none opacity-50" : "text-primary"}
                                     />
                                 </PaginationItem>
@@ -132,7 +119,7 @@ export function HistoryTable({ sessions, loading }: Props) {
                                             <PaginationLink
                                                 href="#"
                                                 isActive={p === page}
-                                                onClick={e => { e.preventDefault(); go(p as number) }}
+                                                onClick={e => { e.preventDefault(); onPageChange(p as number) }}
                                                 className={p === page ? "text-primary-foreground" : ""}
                                             >
                                                 {p}
@@ -144,7 +131,7 @@ export function HistoryTable({ sessions, loading }: Props) {
                                 <PaginationItem>
                                     <PaginationNext
                                         href="#"
-                                        onClick={e => { e.preventDefault(); go(page + 1) }}
+                                        onClick={e => { e.preventDefault(); onPageChange(page + 1) }}
                                         className={page === totalPages ? "pointer-events-none opacity-50" : "text-primary"}
                                     />
                                 </PaginationItem>

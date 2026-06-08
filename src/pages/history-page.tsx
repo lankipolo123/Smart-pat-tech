@@ -14,6 +14,7 @@ import { ExportDialog } from "@/components/export-dialog"
 import { fetchParkingStats, fetchSessions, type ParkingStats, type SessionRecord } from "@/services/parking"
 import { type ParkingRange } from "@/configs/parking-range.config"
 import { createSessionExportConfig } from "@/utils/session-export-utils"
+import { usePagination } from "@/hooks/usePagination"
 
 const STORAGE_KEY = "history-range"
 const DEFAULT_RANGE_MIGRATION_KEY = "history-range-default-week-v1"
@@ -36,6 +37,8 @@ export function HistoryPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(false)
 
+    const sessionsPagination = usePagination(sessions, 10)
+
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, range)
     }, [range])
@@ -44,7 +47,6 @@ export function HistoryPage() {
         let cancelled = false
         setLoading(true)
         setError(false)
-        // Don't reset stats/sessions here — keep previous data visible under the overlay
 
         Promise.allSettled([
             fetchParkingStats(range),
@@ -63,6 +65,7 @@ export function HistoryPage() {
 
                 if (sessionsResult.status === "fulfilled") {
                     setSessions(sessionsResult.value)
+                    sessionsPagination.setPage(1)
                 }
 
                 if (hasError) {
@@ -124,7 +127,11 @@ export function HistoryPage() {
                             )}
                             <HistoryTable
                                 sessions={sessions}
+                                paginated={sessionsPagination.paginated}
                                 loading={false}
+                                page={sessionsPagination.page}
+                                totalPages={sessionsPagination.totalPages}
+                                onPageChange={sessionsPagination.setPage}
                             />
                         </div>
                     }

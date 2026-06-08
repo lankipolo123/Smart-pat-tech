@@ -5,11 +5,13 @@ import shutil
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Response, UploadFile
 
 from services.auth import get_conn
 from services.camera import switch_capture
 from services.db import switch_payload, upsert_video_source
+from services.zones import load_zones, notify_zones_changed
+import services.state as S
 
 router = APIRouter()
 
@@ -118,6 +120,8 @@ def activate_camera(camera_id: int):
         conn.execute("UPDATE video_sources SET active=0")
         upsert_video_source(conn, camera_id, row["name"], row["camera_type"], config, 1)
 
+    load_zones(camera_id)
+    notify_zones_changed()
     return {"ok": True, "camera_id": camera_id, "simulation": False}
 
 
@@ -176,6 +180,8 @@ def activate_source(source_id: int):
             conn.execute("UPDATE cameras SET is_active=0 WHERE is_active=1")
             conn.execute("UPDATE cameras SET is_active=1 WHERE id=?", (row["camera_id"],))
 
+    load_zones(row["camera_id"])
+    notify_zones_changed()
     return {"ok": True, "simulation": False}
 
 
@@ -183,13 +189,60 @@ def activate_source(source_id: int):
 @router.post("/webcam")
 def switch_webcam(data: dict):
     ok = switch_capture("webcam", str(data["index"]))
+    load_zones()
+    notify_zones_changed()
     return {"ok": ok, "simulation": not ok}
 
 
 @router.post("/connect")
 def connect_url(data: dict):
     ok = switch_capture("url", data["url"])
+    load_zones()
+    notify_zones_changed()
     return {"ok": ok, "simulation": not ok}
+
+
+@router.post("/source/activate")
+def activate_external_source(data: dict):
+    source_type = data.get("type")
+    source_url = data.get("url")
+    camera_id = data.get("camera_id")
+    if not source_type:
+        raise HTTPException(400, "type is required")
+    if source_type != "webcam" and not source_url:
+        raise HTTPException(400, "url is required")
+
+    ok = switch_capture(source_type, str(source_url or "0"), camera_id)
+    if not ok:
+        raise HTTPException(400, "Video source could not be opened")
+
+    load_zones(camera_id)
+    notify_zones_changed()
+    return {"ok": True, "simulation": False}
+
+
+@router.post("/camera/activate-config")
+def activate_camera_config(data: dict):
+    camera_id = data.get("camera_id")
+    camera_type = data.get("camera_type")
+    config = data.get("config") or {}
+    if camera_id is None:
+        raise HTTPException(400, "camera_id is required")
+    if not camera_type:
+        raise HTTPException(400, "camera_type is required")
+
+    payload = switch_payload(camera_type, config)
+    if not payload:
+        raise HTTPException(400, "Invalid camera config")
+
+    src_type, src_url = payload
+    ok = switch_capture(src_type, src_url, camera_id)
+    if not ok:
+        raise HTTPException(400, "Camera stream could not be opened")
+
+    load_zones(int(camera_id))
+    notify_zones_changed()
+    return {"ok": True, "camera_id": int(camera_id), "simulation": False}
 
 
 @router.post("/upload-video")
@@ -200,3 +253,38 @@ async def upload_video(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
     ok = switch_capture("mp4", str(dest))
     return {"ok": ok, "path": str(dest)}
+
+
+@router.post("/camera/pause")
+def pause_camera():
+    with S.frame_lock:
+        frame = S.latest_frame
+    if not frame:
+        raise HTTPException(404, "No camera frame available to pause")
+    with S.pause_lock:
+        S.paused_frame = frame
+        S.capture_paused = True
+    return {"ok": True, "paused": True}
+
+
+@router.post("/camera/resume")
+def resume_camera():
+    with S.pause_lock:
+        S.capture_paused = False
+        S.paused_frame = None
+    return {"ok": True, "paused": False}
+
+
+@router.get("/camera/snapshot")
+def camera_snapshot():
+    with S.pause_lock:
+        paused = S.capture_paused
+        paused_frame = S.paused_frame
+    if paused and paused_frame:
+        return Response(content=paused_frame, media_type="image/jpeg")
+
+    with S.frame_lock:
+        frame = S.latest_frame
+    if not frame:
+        raise HTTPException(404, "No camera frame available")
+    return Response(content=frame, media_type="image/jpeg")

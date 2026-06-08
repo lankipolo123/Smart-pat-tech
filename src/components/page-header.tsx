@@ -5,7 +5,6 @@ import { pageHeaderConfig as cfg } from "@/configs/page-header-configs"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
 
-// Isolated clock — only this re-renders every second, nothing above it
 const LiveClock = memo(function LiveClock() {
     const DateIcon = cfg.icons.dateIcon
     const TimeIcon = cfg.icons.timeIcon
@@ -50,10 +49,12 @@ type Props = {
 export function PageHeader({ title, description, extra }: Props) {
     const { name, email, photoURL } = useAuth()
 
+    const initials = name?.charAt(0)?.toUpperCase() ?? "?"
+
     return (
         <div className="sticky top-0 z-30 w-full h-[87px] px-8 border-b border-secondary/40 bg-background flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
-                <h1 className="text-1.6xl font-medium tracking-wide text-primary uppercase">
+                <h1 className="text-2xl font-medium tracking-wide text-primary uppercase">
                     {title}
                 </h1>
                 {description && (
@@ -70,11 +71,11 @@ export function PageHeader({ title, description, extra }: Props) {
                         <span className="opacity-40">/</span>
                         <Avatar className="size-10">
                             <AvatarImage src={photoURL} />
-                            <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>{initials}</AvatarFallback>
                         </Avatar>
                         <div className="leading-tight">
-                            <div className="text-sm font-medium text-primary">{name}</div>
-                            <div className="text-xs text-muted-foreground">{email}</div>
+                            <div className="text-sm font-medium text-primary">{name ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground">{email ?? "—"}</div>
                         </div>
                     </>
                 )}

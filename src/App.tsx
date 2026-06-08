@@ -120,7 +120,7 @@ function App() {
       setDialog("created")
     } catch (err) {
       const msg = err instanceof Error ? err.message : ""
-      setDialog(msg === "Email already registered" ? "exists" : "login-server")
+      setDialog(msg === "Email is already in use" ? "exists" : "login-server")
     } finally {
       setLoading(false)
     }
@@ -172,11 +172,11 @@ function App() {
     }
   }, [session])
 
-  const handleDeactivate = useCallback(async () => {
+  const handleDeactivate = useCallback(() => {
     setAccountDialog("deactivate-confirm")
   }, [])
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = useCallback(() => {
     setAccountDialog("delete-confirm")
   }, [])
 
@@ -334,9 +334,7 @@ function App() {
         )}
       >
         {pages.map(({ key, node }) => (
-          <div key={key} style={{ display: active === key ? "contents" : "none" }}>
-            {node}
-          </div>
+          key === active ? <>{node}</> : null
         ))}
       </DashboardLayout>
 

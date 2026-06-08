@@ -5,6 +5,7 @@ Parking session writes go to MySQL (fire-and-forget).
 """
 
 import datetime
+import json
 import time
 import logging
 
@@ -71,6 +72,31 @@ def _zone_points_for_frame(points: list, frame_shape) -> list:
     if normalized:
         return [[float(x) * w, float(y) * h] for x, y in points]
     return points
+
+
+def _normalize_box(x1: float, y1: float, x2: float, y2: float, frame_shape, label: str, confidence: float) -> dict:
+    h, w = frame_shape[:2]
+    x1 = max(0.0, min(float(w), x1))
+    y1 = max(0.0, min(float(h), y1))
+    x2 = max(0.0, min(float(w), x2))
+    y2 = max(0.0, min(float(h), y2))
+    return {
+        "x": round(x1 / w, 4) if w else 0,
+        "y": round(y1 / h, 4) if h else 0,
+        "width": round(max(0.0, x2 - x1) / w, 4) if w else 0,
+        "height": round(max(0.0, y2 - y1) / h, 4) if h else 0,
+        "label": label,
+        "confidence": round(confidence, 3),
+    }
+
+
+def _set_detections(boxes: list[dict]) -> None:
+    with S.detections_lock:
+        S.latest_detections = boxes
+    with S.detection_ws_lock:
+        has_clients = bool(S.detection_ws_clients)
+    if has_clients:
+        schedule(_broadcast_detections(boxes))
 
 
 # ── zone processing ───────────────────────────────────────────────────────────
@@ -246,6 +272,34 @@ def detection_loop():
         consecutive_failures = 0
         reconnect_attempts   = 0
 
+        with S.pause_lock:
+            paused = S.capture_paused
+            paused_frame = S.paused_frame
+
+        if paused:
+            now = time.monotonic()
+            if paused_frame is None:
+                try:
+                    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                    paused_frame = buf.tobytes()
+                except Exception as exc:
+                    log.error("[Loop] Failed to encode paused frame: %s", exc)
+                    time.sleep(0.1)
+                    continue
+                with S.pause_lock:
+                    S.paused_frame = paused_frame
+            if (now - last_video_ts) >= VIDEO_FPS_CAP:
+                with S.frame_lock:
+                    S.latest_frame = paused_frame
+                    S.last_frame_ts = now
+                with S.video_ws_lock:
+                    has_video_clients = bool(S.video_ws_clients)
+                if has_video_clients:
+                    schedule(_broadcast_video(paused_frame))
+                last_video_ts = now
+            time.sleep(0.03)
+            continue
+
         # ── encode + broadcast video frame ────────────────────────────────
         now = time.monotonic()
         if (now - last_video_ts) >= VIDEO_FPS_CAP:
@@ -274,11 +328,16 @@ def detection_loop():
         try:
             results    = model.predict(frame, verbose=False)[0]
             detections = []
+            detection_boxes = []
             for b in (results.boxes or []):
                 if int(b.cls[0]) not in VEHICLE_CLASSES:
                     continue
                 x1, y1, x2, y2 = (float(v) for v in b.xyxy[0])
-                detections.append(([x1, y1, x2 - x1, y2 - y1], float(b.conf[0]), "car"))
+                confidence = float(b.conf[0])
+                detections.append(([x1, y1, x2 - x1, y2 - y1], confidence, "car"))
+                detection_boxes.append(
+                    _normalize_box(x1, y1, x2, y2, frame.shape, "vehicle", confidence)
+                )
 
             tracks = tracker.update_tracks(detections, frame=frame)
             centers = [
@@ -288,6 +347,7 @@ def detection_loop():
                 )
                 for t in tracks if t.is_confirmed()
             ]
+            _set_detections(detection_boxes)
         except Exception as exc:
             log.error("[Loop] YOLO/tracker error (skipping frame): %s", exc)
             time.sleep(0.1)
@@ -316,3 +376,20 @@ async def _broadcast_video(frame: bytes):
     if dead:
         with S.video_ws_lock:
             S.video_ws_clients.difference_update(dead)
+
+
+async def _broadcast_detections(boxes: list[dict]):
+    payload = json.dumps(boxes)
+    with S.detection_ws_lock:
+        clients = set(S.detection_ws_clients)
+
+    dead = set()
+    for ws in clients:
+        try:
+            await ws.send_text(payload)
+        except Exception:
+            dead.add(ws)
+
+    if dead:
+        with S.detection_ws_lock:
+            S.detection_ws_clients.difference_update(dead)

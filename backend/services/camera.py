@@ -185,6 +185,9 @@ def switch_capture(source_type: str, url: str, camera_id=None) -> bool:
 
     # Update source under source_lock only (separate acquisition — no nesting)
     if ok:
+        with S.pause_lock:
+            S.capture_paused = False
+            S.paused_frame = None
         set_source(source_type, url, camera_id)
     else:
         if cap_is_none:

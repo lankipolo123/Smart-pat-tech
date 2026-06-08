@@ -7,12 +7,12 @@ import { SettingsLayout } from "@/layouts/settings-layout"
 import { ProfileHeader } from "@/components/profile-header"
 import { PersonalInfoForm } from "@/components/personal-info-form"
 import { ManageAccountCard } from "@/components/manage-account-card"
+import { PhotoPreview } from "@/components/photo-preview"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle,
     DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-
 import { useAuth } from "@/contexts/auth-context"
 
 function formatDate(iso: string | null): string {
@@ -39,7 +39,7 @@ export function SettingsPage({
 }: Props) {
     const { name, email, joinedAt, lastLogin, photoURL, updateUser } = useAuth()
 
-    const [firstName, ...rest] = name.split(" ")
+    const [firstName, ...rest] = (name ?? "").split(" ")
     const lastName = rest.join(" ")
 
     const [photoDialog, setPhotoDialog] = useState(false)
@@ -101,9 +101,9 @@ export function SettingsPage({
                 <SettingsLayout
                     one={
                         <ProfileHeader
-                            displayName={name}
+                            displayName={name ?? "—"}
                             role="User"
-                            email={email}
+                            email={email ?? "—"}
                             status="active"
                             photoURL={photoURL}
                             joinedDate={formatDate(joinedAt)}
@@ -113,7 +113,7 @@ export function SettingsPage({
                     }
                     two={
                         <ManageAccountCard
-                            userEmail={email}
+                            userEmail={email ?? "—"}
                             onChangeEmail={onChangeEmail}
                             onChangePassword={onChangePassword}
                             onDeactivate={onDeactivate}
@@ -122,7 +122,7 @@ export function SettingsPage({
                     }
                     three={
                         <PersonalInfoForm
-                            userInfo={{ firstName, lastName, email }}
+                            userInfo={{ firstName, lastName, email: email ?? "" }}
                             onUpdate={updateUser}
                         />
                     }
@@ -137,23 +137,13 @@ export function SettingsPage({
                             Select an image file. Max 5MB.
                         </DialogDescription>
                     </DialogHeader>
-
-                    <div className="flex flex-col items-center gap-4 py-2">
-                        {preview ? (
-                            <img
-                                src={preview}
-                                alt="Preview"
-                                className="w-24 h-24 rounded-full object-cover border"
-                            />
-                        ) : (
-                            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                                No photo
-                            </div>
-                        )}
+                    <>
+                        <PhotoPreview src={preview} />
                         <Button
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={uploading}
+                            className="mx-auto"
                         >
                             Choose File
                         </Button>
@@ -165,10 +155,9 @@ export function SettingsPage({
                             onChange={handleFileChange}
                         />
                         {uploadError && (
-                            <p className="text-xs text-red-500">{uploadError}</p>
+                            <p className="text-xs text-red-500 text-center">{uploadError}</p>
                         )}
-                    </div>
-
+                    </>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleDialogClose} disabled={uploading}>
                             Cancel

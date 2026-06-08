@@ -22,6 +22,10 @@ current_source: dict[str, int | str | None] = {
 source_lock = threading.Lock()
 simulation_mode: bool = False
 
+capture_paused: bool = False
+paused_frame: bytes | None = None
+pause_lock = threading.Lock()
+
 # ── zones ─────────────────────────────────────────────────────────────────────
 zones_cache: list[dict] = []
 zones_lock = threading.Lock()
@@ -32,6 +36,11 @@ zone_ws_lock = threading.Lock()
 
 video_ws_clients: set[WebSocket] = set()
 video_ws_lock = threading.Lock()
+
+detection_ws_clients: set[WebSocket] = set()
+detection_ws_lock = threading.Lock()
+latest_detections: list[dict] = []
+detections_lock = threading.Lock()
 
 # ── event loop (assigned in lifespan) ────────────────────────────────────────
 _main_loop: asyncio.AbstractEventLoop | None = None

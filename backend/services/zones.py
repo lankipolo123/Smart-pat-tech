@@ -17,12 +17,34 @@ from services.auth import get_conn
 import services.state as S
 
 
-def load_zones():
+def get_active_camera_id() -> int | None:
+    with S.source_lock:
+        current_camera_id = S.current_source.get("camera_id")
+    if current_camera_id is not None:
+        return int(current_camera_id)
+
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM zones").fetchall() or []
-    cache = [
+        row = conn.execute(
+            "SELECT id FROM cameras WHERE is_active=1 ORDER BY updated_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+    return int(row["id"]) if row else None
+
+
+def read_zones(camera_id: int | None = None) -> list[dict]:
+    selected_camera_id = get_active_camera_id() if camera_id is None else camera_id
+    with get_conn() as conn:
+        if selected_camera_id is None:
+            rows = conn.execute("SELECT * FROM zones WHERE camera_id IS NULL ORDER BY id").fetchall() or []
+        else:
+            rows = conn.execute(
+                "SELECT * FROM zones WHERE camera_id=? ORDER BY id",
+                (selected_camera_id,),
+            ).fetchall() or []
+
+    return [
         {
             "id":         r["id"],
+            "camera_id":  r["camera_id"],
             "slot":       r["slot"],
             "points":     json.loads(r["points"]),
             "zone_type":  r["zone_type"],
@@ -31,6 +53,10 @@ def load_zones():
         }
         for r in rows
     ]
+
+
+def load_zones(camera_id: int | None = None):
+    cache = read_zones(camera_id)
     with S.zones_lock:
         S.zones_cache.clear()
         S.zones_cache.extend(cache)

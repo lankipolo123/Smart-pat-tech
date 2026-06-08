@@ -1,39 +1,38 @@
-// components/CameraDataTable.tsx
+import type { ReactNode } from "react"
 import {
   Table, TableBody, TableCell,
   TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Camera, MoreHorizontal, Play, Settings, Edit, Trash2 } from "lucide-react"
-import { type Camera as CameraDevice } from "@/services/camera"
+import { Camera, MoreHorizontal, Play, Settings, Edit, Trash2, Wifi, WifiOff } from "lucide-react"
+import { type Camera as CameraDevice, type CameraConnectionState } from "@/services/camera"
 
 type Props = {
   cameras: CameraDevice[]
   activeCamera?: string | null
   activeCameraId?: number | null
+  connectionState?: CameraConnectionState
   onSelect?: (camera: CameraDevice) => void
   onConfigure?: (camera: CameraDevice) => void
   onEdit?: (camera: CameraDevice) => void
   onDelete?: (camera: CameraDevice) => void
+  pagination?: ReactNode
 }
 
 export function CameraDataTable({
   cameras,
   activeCamera,
   activeCameraId,
+  connectionState = "disconnected",
   onSelect,
   onConfigure,
   onEdit,
   onDelete,
+  pagination,
 }: Props) {
   if (cameras.length === 0) {
     return (
@@ -41,6 +40,34 @@ export function CameraDataTable({
         <Camera className="size-8 opacity-50" />
         No cameras found. Use "Configure Camera" to add one.
       </div>
+    )
+  }
+
+  function CameraStatus({ isActive }: { isActive: boolean }) {
+    if (!isActive) {
+      return <Badge variant="outline" className="text-[10px]">AVAILABLE</Badge>
+    }
+
+    if (connectionState === "live") {
+      return (
+        <Badge className="text-[10px] bg-green-500 flex items-center gap-1">
+          <Wifi className="size-3" /> LIVE
+        </Badge>
+      )
+    }
+
+    if (connectionState === "connecting") {
+      return (
+        <Badge className="text-[10px] bg-yellow-500 flex items-center gap-1">
+          <Wifi className="size-3" /> CONNECTING
+        </Badge>
+      )
+    }
+
+    return (
+      <Badge className="text-[10px] bg-orange-500 flex items-center gap-1">
+        <WifiOff className="size-3" /> ACTIVE (OFFLINE)
+      </Badge>
     )
   }
 
@@ -60,6 +87,7 @@ export function CameraDataTable({
             const isActive = activeCameraId != null
               ? activeCameraId === camera.id
               : activeCamera === camera.name
+
             return (
               <TableRow
                 key={camera.id}
@@ -72,19 +100,12 @@ export function CameraDataTable({
                     {camera.name || `Camera ${camera.id}`}
                   </div>
                 </TableCell>
-
                 <TableCell className="text-xs text-muted-foreground capitalize">
                   {camera.camera_type.replace("_", " ")}
                 </TableCell>
-
                 <TableCell>
-                  {isActive ? (
-                    <Badge className="text-[10px] bg-green-500">ACTIVE</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">AVAILABLE</Badge>
-                  )}
+                  <CameraStatus isActive={isActive} />
                 </TableCell>
-
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -96,22 +117,16 @@ export function CameraDataTable({
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuGroup>
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={(e) => { e.stopPropagation(); onSelect?.(camera) }}
-                        >
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelect?.(camera) }}>
                           <Play className="size-4 mr-2" /> Set as Active
                         </DropdownMenuItem>
                         {onConfigure && (
-                          <DropdownMenuItem
-                            onClick={(e) => { e.stopPropagation(); onConfigure(camera) }}
-                          >
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onConfigure(camera) }}>
                             <Settings className="size-4 mr-2" /> Configure
                           </DropdownMenuItem>
                         )}
                         {onEdit && (
-                          <DropdownMenuItem
-                            onClick={(e) => { e.stopPropagation(); onEdit(camera) }}
-                          >
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(camera) }}>
                             <Edit className="size-4 mr-2" /> Edit
                           </DropdownMenuItem>
                         )}
@@ -133,6 +148,7 @@ export function CameraDataTable({
           })}
         </TableBody>
       </Table>
+      {pagination && <div className="border-t p-2">{pagination}</div>}
     </div>
   )
 }

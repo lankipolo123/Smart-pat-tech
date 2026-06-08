@@ -16,24 +16,16 @@ export function ConfigureLayout({
     zonesConfiguration,
 }: Props) {
     return (
-        <div className="w-full h-full flex flex-col p-4 lg:p-6">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 w-full flex-1">
+        <div className="w-full grid grid-cols-1 xl:grid-cols-[1fr_1.2fr] gap-4 p-4 lg:p-6 items-start">
+            <div className="w-full xl:sticky xl:top-4">
+                {canvas}
+            </div>
 
-                {/* LEFT - Canvas Area */}
-                <div className="flex min-h-0">
-                    <div className="w-full aspect-[4/3] bg-muted/10 rounded-xl p-4">
-                        {canvas}
-                    </div>
-                </div>
-
-                {/* RIGHT - Panel Area */}
-                <div className="flex flex-col gap-2 min-h-0 w-full">
-                    {cameraActions}
-                    {cameraConfiguration}
-                    {videoSourcesConfiguration}
-                    {zonesConfiguration}
-                </div>
-
+            <div className="flex flex-col gap-3 w-full">
+                {cameraActions}
+                {cameraConfiguration}
+                {videoSourcesConfiguration}
+                {zonesConfiguration}
             </div>
         </div>
     )
